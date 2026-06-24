@@ -35,13 +35,18 @@ There are two free accounts involved:
      rules that keep the farm manager limited to adding (not deleting) records.
 
 ### Get your two keys
-6. In the left menu open **Project Settings** (gear icon) → **API**.
+6. In the left menu open **Project Settings** (gear icon) → **API Keys** (and
+   **Data API** for the URL).
 7. Copy these two values — you'll need them in Step 2:
-   - **Project URL** (looks like `https://abcd1234.supabase.co`)
-   - **anon public** key (a long string)
+   - **Project URL** (looks like `https://abcd1234.supabase.co`) — found under
+     **Project Settings → Data API** (or **General**).
+   - The **Publishable key** (starts with `sb_publishable_…`). On older projects
+     this is instead labelled **anon public** — either one is the right key.
 
-> These are safe to put in a website — your data is protected by the security
-> rules from Step 1, not by hiding this key.
+> These are safe to put in a website — the page even says publishable keys "can
+> be safely shared publicly". Your data is protected by the security rules from
+> Step 1, not by hiding this key. Do **not** use the **Secret key**
+> (`sb_secret_…`) / **service_role** key in the app.
 
 ---
 
