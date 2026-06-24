@@ -9,7 +9,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/hello-208wi7]
   workflow_dispatch:
 
 permissions:
