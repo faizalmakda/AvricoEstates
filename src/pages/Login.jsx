@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { isDemo } from '../supabaseClient'
+import { DEMO_ACCOUNTS } from '../lib/mockBackend'
 import { Button, Field } from '../components/ui'
 
 export default function Login() {
@@ -13,14 +15,18 @@ export default function Login() {
 
   if (!loading && user) return <Navigate to="/" replace />
 
-  const onSubmit = async (e) => {
-    e.preventDefault()
+  const doSignIn = async (em, pw) => {
     setError(null)
     setBusy(true)
-    const { error } = await signIn(email, password)
+    const { error } = await signIn(em, pw)
     setBusy(false)
     if (error) setError(error.message)
     else navigate('/')
+  }
+
+  const onSubmit = (e) => {
+    e.preventDefault()
+    doSignIn(email, password)
   }
 
   return (
@@ -31,6 +37,32 @@ export default function Login() {
           <span className="brand-name">Avrico Estates</span>
         </div>
         <p className="muted">Sign in to manage the estate.</p>
+
+        {isDemo && (
+          <div className="demo-box">
+            <div className="banner banner-info" style={{ textAlign: 'left' }}>
+              <strong>Demo mode</strong> — sample data, no setup needed. Tap a
+              person to log in and see what they can do.
+            </div>
+            <div className="demo-people">
+              {DEMO_ACCOUNTS.map((a) => (
+                <button
+                  key={a.email}
+                  type="button"
+                  className="demo-person"
+                  disabled={busy}
+                  onClick={() => doSignIn(a.email, 'demo')}
+                >
+                  <span className="demo-name">{a.label}</span>
+                  <span className={`role-pill role-${a.role}`}>
+                    {a.role === 'owner' ? 'Owner / Admin' : 'Farm Manager'}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="demo-divider"><span>or sign in manually</span></div>
+          </div>
+        )}
 
         <Field label="Email">
           <input

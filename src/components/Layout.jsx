@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { can } from '../lib/permissions'
+import { isDemo } from '../supabaseClient'
+import { resetDemo } from '../lib/mockBackend'
 
 // Navigation items. `show` decides visibility based on the user's role.
 const NAV = [
@@ -53,7 +55,25 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      <main className="content">{children}</main>
+      <main className="content">
+        {isDemo && (
+          <div className="demo-ribbon">
+            🧪 Demo mode — sample data stored only in this browser.
+            <button
+              className="link"
+              onClick={() => {
+                if (confirm('Reset the demo back to its original sample data?')) {
+                  resetDemo()
+                  window.location.reload()
+                }
+              }}
+            >
+              Reset demo data
+            </button>
+          </div>
+        )}
+        {children}
+      </main>
 
       {/* Bottom tab bar for phones */}
       <nav className="tabbar">

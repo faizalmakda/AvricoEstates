@@ -23,7 +23,24 @@ go around the app.
   cloud database. You sign up once; there is **no server for you to run or
   maintain**.
 
-## Get it running
+## Try it locally first (no setup, no accounts)
+Want to see how it works before doing any of the cloud setup? You can run it on
+your own computer with built-in **demo data**:
+
+```bash
+npm install
+npm run dev
+```
+
+Then open the link it prints (usually http://localhost:5173). Because there are
+no Supabase keys yet, the app starts in **Demo mode**: tap any of the sample
+people on the login screen — 3 directors (full access) or the farm manager
+(limited) — and click around. Sample trees, tasks, inventory and yield are
+already there, and anything you change is saved only in your own browser (use
+**Reset demo data** to start over). When you're ready to make it real and
+multi-user, follow the cloud setup below.
+
+## Get it running for real (multi-user)
 See **[SETUP.md](./SETUP.md)** for friendly, step-by-step instructions
 (about 15 minutes, no coding needed). In short:
 

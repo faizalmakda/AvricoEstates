@@ -212,6 +212,24 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .auth-card .field { text-align: left; }
 .setup-list { text-align: left; line-height: 1.7; }
 
+/* ---------- Demo mode ---------- */
+.demo-box { margin: 6px 0 4px; }
+.demo-people { display: grid; gap: 8px; margin: 10px 0; }
+.demo-person {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; cursor: pointer; font: inherit; text-align: left;
+}
+.demo-person:hover:not(:disabled) { border-color: var(--green-2); background: var(--green-soft); }
+.demo-name { font-weight: 600; }
+.demo-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .8rem; margin: 14px 0 6px; }
+.demo-divider::before, .demo-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.demo-ribbon {
+  background: #fff3cd; color: #7a5b00; text-align: center; font-size: .82rem;
+  padding: 6px 12px; border-radius: 8px; margin-bottom: 14px;
+}
+.demo-ribbon button { margin-left: 8px; }
+
 /* ---------- Responsive (phones) ---------- */
 @media (max-width: 820px) {
   .sidebar { display: none; }

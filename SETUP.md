@@ -8,6 +8,16 @@ There are two free accounts involved:
 - **Supabase** — the cloud database (holds logins, trees, tasks, photos).
 - **GitHub** — hosts the app itself (you likely already have this).
 
+> **Just want a look first?** You can run it locally with sample data and no
+> accounts at all:
+> ```bash
+> npm install
+> npm run dev
+> ```
+> Open the printed link, and on the login screen tap any demo person to explore.
+> This "Demo mode" is only for local previewing — the steps below are what make
+> it a real, shared app for your team.
+
 ---
 
 ## Step 1 — Create the database (Supabase)
