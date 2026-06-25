@@ -1,241 +1,438 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
+const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
+
 export default function TreeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { profile, user } = useAuth()
   const [tree, setTree] = useState(null)
-  const [logs, setLogs] = useState([])
+  const [data, setData] = useState({ inspections: [], treatments: [], photos: [], logs: [], replacements: [] })
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState(params.get('tab') === 'history' ? 'History' : 'Overview')
+  const [editing, setEditing] = useState(params.get('edit') === '1')
 
   const load = async () => {
-    const [{ data: t }, { data: l }] = await Promise.all([
-      supabase.from('trees').select('*').eq('id', id).single(),
-      supabase
-        .from('tree_logs')
-        .select('*, by:logged_by(full_name)')
-        .eq('tree_id', id)
-        .order('created_at', { ascending: false }),
+    const [{ data: t }, insp, treat, ph, logs, repl] = await Promise.all([
+      supabase.from('trees').select('*, zone:zone_id(code)').eq('id', id).single(),
+      supabase.from('tree_inspections').select('*, by:inspector_id(full_name)').eq('tree_id', id).order('inspection_date', { ascending: false }),
+      supabase.from('tree_treatments').select('*, by:applied_by(full_name)').eq('tree_id', id).order('treatment_date', { ascending: false }),
+      supabase.from('tree_photos').select('*, by:uploaded_by(full_name)').eq('tree_id', id).order('created_at', { ascending: false }),
+      supabase.from('tree_logs').select('*, by:logged_by(full_name)').eq('tree_id', id).order('created_at', { ascending: false }),
+      supabase.from('tree_replacements').select('*, by:performed_by(full_name)').eq('tree_id', id).order('replaced_on', { ascending: false }),
     ])
     setTree(t)
-    setLogs(l ?? [])
+    setData({
+      inspections: insp.data ?? [],
+      treatments: treat.data ?? [],
+      photos: ph.data ?? [],
+      logs: logs.data ?? [],
+      replacements: repl.data ?? [],
+    })
     setLoading(false)
   }
 
-  useEffect(() => {
-    load()
-  }, [id]) // eslint-disable-line
+  useEffect(() => { load() }, [id]) // eslint-disable-line
 
   if (loading) return <Spinner />
   if (!tree) return <Banner kind="error">Tree not found.</Banner>
 
   const archive = async () => {
-    const next = !tree.archived
-    if (!confirm(next ? 'Archive this tree?' : 'Restore this tree?')) return
+    if (!confirm('Archive this tree? It will be hidden but its data is kept (soft-delete).')) return
     const { error } = await supabase
       .from('trees')
-      .update({ archived: next, updated_at: new Date().toISOString() })
+      .update({ archived: true, deleted_at: new Date().toISOString() })
       .eq('id', id)
-    if (error) return alert(error.message)
-    load()
-  }
-
-  const remove = async () => {
-    if (!confirm('Permanently delete this tree and its logs? This cannot be undone.')) return
-    const { error } = await supabase.from('trees').delete().eq('id', id)
     if (error) return alert(error.message)
     navigate('/trees')
   }
 
   return (
     <div className="detail">
-      <Link to="/trees" className="back-link">← Trees</Link>
+      <Link to="/trees" className="back-link">← Tree Register</Link>
 
       <Card>
         <div className="card-head">
-          <h1>{tree.code}</h1>
+          <div>
+            <h1 className="mono">{tree.code}</h1>
+            <div className="muted small">
+              {tree.zone?.code ? `Zone ${tree.zone.code}` : ''}
+              {tree.row_number ? ` · Row ${tree.row_number}` : ''}
+              {tree.tree_number ? ` · Tree ${tree.tree_number}` : ''}
+            </div>
+          </div>
           <Badge color={STATUS_COLORS[tree.status]}>{tree.status}</Badge>
         </div>
-        <div className="meta-grid">
-          <Meta label="Species" value={tree.species || '—'} />
-          <Meta label="Location" value={tree.location || '—'} />
-          <Meta label="Planted" value={tree.planted_on || '—'} />
-        </div>
-        {tree.notes && <p className="instructions">{tree.notes}</p>}
 
-        {(can.editTree(profile) || can.deleteTree(profile)) && (
-          <div className="detail-actions">
-            {can.editTree(profile) && <EditTreeButton tree={tree} onSaved={load} />}
-            {can.archiveTree(profile) && (
-              <Button variant="secondary" onClick={archive}>
-                {tree.archived ? 'Restore' : 'Archive'}
-              </Button>
-            )}
-            {can.deleteTree(profile) && (
-              <Button variant="danger" onClick={remove}>Delete</Button>
-            )}
-          </div>
+        {editing ? (
+          <EditTree tree={tree} onDone={() => { setEditing(false); load() }} onCancel={() => setEditing(false)} />
+        ) : (
+          <>
+            <div className="meta-grid">
+              <Meta label="Species" value={tree.species || '—'} />
+              <Meta label="Location" value={tree.location || '—'} />
+              <Meta label="Planted" value={tree.planted_on || '—'} />
+              <Meta label="Last inspection" value={tree.last_inspection_on || '—'} />
+            </div>
+            {tree.notes && <p className="instructions">{tree.notes}</p>}
+            <div className="detail-actions">
+              {can.editTree(profile) && <Button variant="secondary" onClick={() => setEditing(true)}>Edit</Button>}
+              {can.recordReplacement(profile) && (
+                <ReplaceButton tree={tree} userId={user.id} onDone={load} />
+              )}
+              {can.archiveTree(profile) && <Button variant="ghost" onClick={archive}>Archive</Button>}
+            </div>
+          </>
         )}
       </Card>
 
-      {/* Anyone (manager included) can ADD a status log. Existing logs are never changed. */}
-      {can.addTreeLog(profile) && (
-        <AddLogForm treeId={tree.id} userId={user.id} onDone={load} />
+      <div className="segmented">
+        {TABS.map((tb) => (
+          <button key={tb} className={tab === tb ? 'seg active' : 'seg'} onClick={() => setTab(tb)}>
+            {tb}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'Overview' && (
+        <Card>
+          <h2>Summary</h2>
+          <ul className="list">
+            <li className="list-row"><span>Inspections</span><strong>{data.inspections.length}</strong></li>
+            <li className="list-row"><span>Treatments</span><strong>{data.treatments.length}</strong></li>
+            <li className="list-row"><span>Photos</span><strong>{data.photos.length}</strong></li>
+            <li className="list-row"><span>Replacements</span><strong>{data.replacements.length}</strong></li>
+          </ul>
+        </Card>
       )}
 
-      <Card>
-        <h2>Status history</h2>
-        <p className="muted small">
-          Every update is kept as a new entry — nothing is ever overwritten or deleted by the manager.
-        </p>
-        {logs.length === 0 ? (
-          <p className="muted">No logs yet.</p>
-        ) : (
-          <ul className="timeline">
-            {logs.map((l) => (
-              <li key={l.id}>
-                <div className="timeline-dot" style={{ background: STATUS_COLORS[l.status] }} />
-                <div className="timeline-body">
-                  <div className="timeline-head">
-                    <strong>{l.status || 'Note'}</strong>
-                    <span className="muted small">
-                      {l.by?.full_name || 'Someone'} · {new Date(l.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  {l.note && <p>{l.note}</p>}
-                  {l.photo_path && (
-                    <a href={evidenceUrl(l.photo_path)} target="_blank" rel="noreferrer">
-                      <img className="evidence-thumb" src={evidenceUrl(l.photo_path)} alt="Tree log" />
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {tab === 'Inspections' && (
+        <>
+          {can.addInspection(profile) && <AddInspection treeId={id} userId={user.id} onDone={load} />}
+          <Timeline
+            items={data.inspections}
+            render={(i) => ({
+              title: i.status || 'Inspection',
+              color: STATUS_COLORS[i.status],
+              meta: `${i.by?.full_name || 'Someone'} · ${i.inspection_date}`,
+              body: i.findings,
+              photo: i.photo_path,
+            })}
+            empty="No inspections logged yet."
+          />
+        </>
+      )}
+
+      {tab === 'Treatments' && (
+        <>
+          {can.addTreatment(profile) && <AddTreatment treeId={id} userId={user.id} onDone={load} />}
+          <Timeline
+            items={data.treatments}
+            render={(t) => ({
+              title: t.product || 'Treatment',
+              meta: `${t.by?.full_name || 'Someone'} · ${t.treatment_date}`,
+              body: [t.reason, t.quantity ? `${t.quantity} ${t.unit || ''}` : '', t.notes].filter(Boolean).join(' · '),
+            })}
+            empty="No treatments recorded yet."
+          />
+        </>
+      )}
+
+      {tab === 'Photos' && (
+        <>
+          {can.addTreePhoto(profile) && <AddPhoto treeId={id} userId={user.id} onDone={load} />}
+          {data.photos.length === 0 ? (
+            <Card><p className="muted">No photos yet.</p></Card>
+          ) : (
+            <div className="photo-grid">
+              {data.photos.map((p) => (
+                <a key={p.id} href={evidenceUrl(p.photo_path)} target="_blank" rel="noreferrer" className="photo-tile">
+                  <img src={evidenceUrl(p.photo_path)} alt={p.caption || 'Tree photo'} />
+                  {p.caption && <span>{p.caption}</span>}
+                </a>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'History' && (
+        <>
+          {can.addTreeLog(profile) && <AddLog treeId={id} userId={user.id} onDone={load} />}
+          {data.replacements.length > 0 && (
+            <Card>
+              <h2>Replacement history</h2>
+              <ul className="timeline">
+                {data.replacements.map((r) => (
+                  <li key={r.id}>
+                    <div className="timeline-dot" style={{ background: '#1565c0' }} />
+                    <div className="timeline-body">
+                      <div className="timeline-head">
+                        <strong>Replaced</strong>
+                        <span className="muted small">{r.by?.full_name || 'Someone'} · {r.replaced_on}</span>
+                      </div>
+                      {(r.reason || r.notes) && <p>{[r.reason, r.notes].filter(Boolean).join(' · ')}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+          <Card>
+            <h2>Status log</h2>
+            <Timeline
+              bare
+              items={data.logs}
+              render={(l) => ({
+                title: l.status || 'Note',
+                color: STATUS_COLORS[l.status],
+                meta: `${l.by?.full_name || 'Someone'} · ${new Date(l.created_at).toLocaleDateString()}`,
+                body: l.note,
+                photo: l.photo_path,
+              })}
+              empty="No status changes logged yet."
+            />
+          </Card>
+        </>
+      )}
     </div>
   )
 }
 
 function Meta({ label, value }) {
-  return (
-    <div className="meta">
-      <span className="meta-label">{label}</span>
-      <span className="meta-value">{value}</span>
-    </div>
-  )
+  return <div className="meta"><span className="meta-label">{label}</span><span className="meta-value">{value}</span></div>
 }
 
-function AddLogForm({ treeId, userId, onDone }) {
-  const [status, setStatus] = useState('Healthy')
-  const [note, setNote] = useState('')
+function Timeline({ items, render, empty, bare }) {
+  if (items.length === 0) {
+    return bare ? <p className="muted">{empty}</p> : <Card><p className="muted">{empty}</p></Card>
+  }
+  const list = (
+    <ul className="timeline">
+      {items.map((it) => {
+        const r = render(it)
+        return (
+          <li key={it.id}>
+            <div className="timeline-dot" style={r.color ? { background: r.color } : undefined} />
+            <div className="timeline-body">
+              <div className="timeline-head">
+                <strong>{r.title}</strong>
+                <span className="muted small">{r.meta}</span>
+              </div>
+              {r.body && <p>{r.body}</p>}
+              {r.photo && (
+                <a href={evidenceUrl(r.photo)} target="_blank" rel="noreferrer">
+                  <img className="evidence-thumb" src={evidenceUrl(r.photo)} alt="" />
+                </a>
+              )}
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+  return bare ? list : <Card>{list}</Card>
+}
+
+// ---- Forms ----------------------------------------------------------------
+function AddInspection({ treeId, userId, onDone }) {
+  const [f, setF] = useState({ status: 'Healthy', findings: '', date: new Date().toISOString().slice(0, 10) })
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
-
+  const [err, setErr] = useState(null)
   const submit = async (e) => {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
+    e.preventDefault(); setBusy(true); setErr(null)
     try {
       let photo_path = null
-      if (file) photo_path = await uploadPhoto(file, `trees/${treeId}`)
-      const { error } = await supabase.from('tree_logs').insert({
-        tree_id: treeId,
-        status,
-        note: note || null,
-        photo_path,
-        logged_by: userId,
+      if (file) photo_path = await uploadPhoto(file, `trees/${treeId}/inspections`)
+      const { error } = await supabase.from('tree_inspections').insert({
+        tree_id: treeId, inspection_date: f.date, status: f.status, findings: f.findings || null,
+        photo_path, inspector_id: userId,
       })
       if (error) throw error
-      // Keep the tree's headline status in sync with the latest log.
-      await supabase.from('trees').update({ status }).eq('id', treeId)
-      setNote('')
-      setFile(null)
-      onDone()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
+      // Reflect the inspection on the tree headline.
+      await supabase.from('trees').update({ status: f.status, last_inspection_on: f.date }).eq('id', treeId)
+      setF({ ...f, findings: '' }); setFile(null); onDone()
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
-
   return (
     <Card className="complete-card">
-      <h2>Log a status update</h2>
+      <h2>Log an inspection</h2>
       <form onSubmit={submit}>
-        <Field label="Status">
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            {TREE_STATUSES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Note">
-          <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-        </Field>
-        <Field label="Photo">
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </Field>
-        {error && <div className="banner banner-error">{error}</div>}
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Add log entry'}</Button>
+        <div className="row">
+          <Field label="Status found">
+            <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+              {TREE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </Field>
+          <Field label="Date"><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+        </div>
+        <Field label="Findings"><textarea rows={2} value={f.findings} onChange={(e) => setF({ ...f, findings: e.target.value })} /></Field>
+        <Field label="Photo"><input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
+        {err && <div className="banner banner-error">{err}</div>}
+        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save inspection'}</Button>
       </form>
     </Card>
   )
 }
 
-function EditTreeButton({ tree, onSaved }) {
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState(tree)
+function AddTreatment({ treeId, userId, onDone }) {
+  const [f, setF] = useState({ product: '', reason: '', quantity: '', unit: '', date: new Date().toISOString().slice(0, 10) })
   const [busy, setBusy] = useState(false)
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
-
-  const save = async (e) => {
-    e.preventDefault()
-    setBusy(true)
-    const { error } = await supabase
-      .from('trees')
-      .update({
-        code: form.code,
-        species: form.species,
-        location: form.location,
-        planted_on: form.planted_on || null,
-        notes: form.notes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', tree.id)
+  const [err, setErr] = useState(null)
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setErr(null)
+    const { error } = await supabase.from('tree_treatments').insert({
+      tree_id: treeId, treatment_date: f.date, product: f.product || null, reason: f.reason || null,
+      quantity: f.quantity ? Number(f.quantity) : null, unit: f.unit || null, applied_by: userId,
+    })
     setBusy(false)
-    if (error) return alert(error.message)
-    setOpen(false)
-    onSaved()
+    if (error) setErr(error.message)
+    else { setF({ ...f, product: '', reason: '', quantity: '' }); onDone() }
   }
-
-  if (!open) return <Button variant="secondary" onClick={() => setOpen(true)}>Edit</Button>
-
   return (
-    <form className="inline-edit" onSubmit={save}>
-      <div className="row">
-        <Field label="Code"><input value={form.code} onChange={set('code')} required /></Field>
-        <Field label="Species"><input value={form.species || ''} onChange={set('species')} /></Field>
-      </div>
-      <Field label="Location"><input value={form.location || ''} onChange={set('location')} /></Field>
-      <Field label="Planted on"><input type="date" value={form.planted_on || ''} onChange={set('planted_on')} /></Field>
-      <Field label="Notes"><textarea rows={2} value={form.notes || ''} onChange={set('notes')} /></Field>
+    <Card className="complete-card">
+      <h2>Record a treatment</h2>
+      <form onSubmit={submit}>
+        <Field label="Product"><input value={f.product} onChange={(e) => setF({ ...f, product: e.target.value })} placeholder="e.g. Copper fungicide" /></Field>
+        <div className="row">
+          <Field label="Quantity"><input type="number" step="any" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} /></Field>
+          <Field label="Unit"><input value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} placeholder="ml, g" /></Field>
+        </div>
+        <Field label="Reason / notes"><input value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} /></Field>
+        <Field label="Date"><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+        {err && <div className="banner banner-error">{err}</div>}
+        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save treatment'}</Button>
+      </form>
+    </Card>
+  )
+}
+
+function AddPhoto({ treeId, userId, onDone }) {
+  const [file, setFile] = useState(null)
+  const [caption, setCaption] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!file) return setErr('Choose a photo first.')
+    setBusy(true); setErr(null)
+    try {
+      const photo_path = await uploadPhoto(file, `trees/${treeId}/photos`)
+      const { error } = await supabase.from('tree_photos').insert({
+        tree_id: treeId, photo_path, caption: caption || null, uploaded_by: userId,
+      })
+      if (error) throw error
+      setFile(null); setCaption(''); onDone()
+    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+  }
+  return (
+    <Card className="complete-card">
+      <h2>Add a photo</h2>
+      <form onSubmit={submit}>
+        <Field label="Photo"><input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
+        <Field label="Caption"><input value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
+        {err && <div className="banner banner-error">{err}</div>}
+        <Button type="submit" disabled={busy}>{busy ? 'Uploading…' : 'Upload photo'}</Button>
+      </form>
+    </Card>
+  )
+}
+
+function AddLog({ treeId, userId, onDone }) {
+  const [status, setStatus] = useState('Healthy')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true)
+    const { error } = await supabase.from('tree_logs').insert({ tree_id: treeId, status, note: note || null, logged_by: userId })
+    if (!error) await supabase.from('trees').update({ status }).eq('id', treeId)
+    setBusy(false)
+    if (error) alert(error.message)
+    else { setNote(''); onDone() }
+  }
+  return (
+    <Card className="complete-card">
+      <h3>Quick status update</h3>
+      <form onSubmit={submit}>
+        <div className="row">
+          <Field label="Status">
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              {TREE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </Field>
+          <Field label="Note"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+        </div>
+        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Add to log'}</Button>
+      </form>
+    </Card>
+  )
+}
+
+function ReplaceButton({ tree, userId, onDone }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const submit = async () => {
+    setBusy(true)
+    const { error } = await supabase.from('tree_replacements').insert({
+      tree_id: tree.id, previous_status: tree.status, reason: reason || null, performed_by: userId,
+    })
+    if (!error) {
+      await supabase.from('trees').update({ status: 'Healthy', planted_on: new Date().toISOString().slice(0, 10) }).eq('id', tree.id)
+    }
+    setBusy(false)
+    if (error) alert(error.message)
+    else { setOpen(false); setReason(''); onDone() }
+  }
+  if (!open) return <Button variant="secondary" onClick={() => setOpen(true)}>Record replacement</Button>
+  return (
+    <div className="inline-edit">
+      <Field label="Reason for replacement"><input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. died from disease" /></Field>
       <div className="modal-actions">
         <Button variant="ghost" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+        <Button type="button" disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Confirm replacement'}</Button>
+      </div>
+    </div>
+  )
+}
+
+function EditTree({ tree, onDone, onCancel }) {
+  const [f, setF] = useState(tree)
+  const [busy, setBusy] = useState(false)
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const save = async (e) => {
+    e.preventDefault(); setBusy(true)
+    const { error } = await supabase.from('trees').update({
+      species: f.species, location: f.location, planted_on: f.planted_on || null,
+      status: f.status, notes: f.notes, updated_at: new Date().toISOString(),
+    }).eq('id', tree.id)
+    setBusy(false)
+    if (error) alert(error.message)
+    else onDone()
+  }
+  return (
+    <form onSubmit={save} className="inline-edit">
+      <Banner kind="info">Tree ID <strong>{tree.code}</strong> is fixed. To move a tree to a new position, archive this one and register the new position.</Banner>
+      <div className="row">
+        <Field label="Status">
+          <select value={f.status} onChange={set('status')}>{TREE_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+        </Field>
+        <Field label="Species"><input value={f.species || ''} onChange={set('species')} /></Field>
+      </div>
+      <Field label="Location"><input value={f.location || ''} onChange={set('location')} /></Field>
+      <Field label="Planted on"><input type="date" value={f.planted_on || ''} onChange={set('planted_on')} /></Field>
+      <Field label="Notes"><textarea rows={2} value={f.notes || ''} onChange={set('notes')} /></Field>
+      <div className="modal-actions">
+        <Button variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>
       </div>
     </form>
   )

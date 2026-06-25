@@ -258,6 +258,11 @@ export function createMockClient() {
       order(col, opts = {}) { state.order = { col, ascending: opts.ascending !== false }; return builder },
       limit(n) { state.limitN = n; return builder },
       single() { state.single = true; return Promise.resolve(exec()) },
+      maybeSingle() {
+        state.single = true
+        const r = exec()
+        return Promise.resolve({ data: r.data ?? null, error: null })
+      },
       then(resolve, reject) { return Promise.resolve(exec()).then(resolve, reject) },
     }
     return builder

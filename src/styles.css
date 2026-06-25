@@ -212,6 +212,34 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .auth-card .field { text-align: left; }
 .setup-list { text-align: left; line-height: 1.7; }
 
+/* ---------- Orchard / zones ---------- */
+.zone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.zone-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.zone-code-link { text-decoration: none; }
+.zone-code { font-size: 1.5rem; font-weight: 800; color: var(--green); letter-spacing: .02em; }
+.zone-count { font-size: 1.05rem; }
+.zone-count strong { font-size: 1.4rem; color: var(--ink); }
+.status-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; }
+.status-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------- Tree register / code ---------- */
+.mono, .mono-link { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
+.mono-link { color: var(--green-2); text-decoration: none; }
+.mono-link:hover { text-decoration: underline; }
+.clickable-row:hover { background: var(--green-soft); }
+.code-preview { background: var(--green-soft); color: var(--green); border-radius: 10px; padding: 10px 14px; margin: 6px 0 12px; font-size: 1.05rem; }
+.code-preview strong { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+/* ---------- Photo grid ---------- */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.photo-tile { display: block; text-decoration: none; color: var(--muted); font-size: .78rem; }
+.photo-tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+
+/* extra role pills */
+.role-pill.role-worker { background: #ffe0b2; color: #7a4f00; }
+.role-pill.role-viewer { background: #e1e4e8; color: #444; }
+
 /* ---------- Demo mode ---------- */
 .demo-box { margin: 6px 0 4px; }
 .demo-people { display: grid; gap: 8px; margin: 10px 0; }

@@ -1,14 +1,15 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { can } from '../lib/permissions'
+import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
 
 // Navigation items. `show` decides visibility based on the user's role.
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '🏠', show: () => true, end: true },
-  { to: '/tasks', label: 'Tasks', icon: '✅', show: () => true },
+  { to: '/orchard', label: 'Orchard', icon: '🗺️', show: () => true },
   { to: '/trees', label: 'Trees', icon: '🌳', show: () => true },
+  { to: '/tasks', label: 'Tasks', icon: '✅', show: () => true },
   { to: '/inventory', label: 'Inventory', icon: '📦', show: () => true },
   { to: '/produce', label: 'Yield', icon: '🧺', show: () => true },
   { to: '/reports', label: 'Reports', icon: '📊', show: (p) => can.viewReports(p) },
@@ -46,7 +47,7 @@ export default function Layout({ children }) {
           <div className="who">
             <div className="who-name">{profile?.full_name ?? user?.email}</div>
             <div className={`role-pill role-${profile?.role}`}>
-              {profile?.role === 'owner' ? 'Owner / Admin' : 'Farm Manager'}
+              {ROLE_LABELS[profile?.role] ?? 'User'}
             </div>
           </div>
           <button className="btn btn-ghost btn-block" onClick={handleSignOut}>

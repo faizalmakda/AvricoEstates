@@ -1,48 +1,73 @@
-// Front-end permission helpers.
+// Front-end permission helpers for the 4-role model.
 //
-// IMPORTANT: these only control what the UI SHOWS. The real enforcement lives
-// in the database (Row Level Security in supabase/schema.sql). Even if someone
-// bypassed the UI, the database would still refuse a forbidden action. These
-// helpers just avoid showing buttons that would fail.
+// IMPORTANT: these only control what the UI SHOWS. The real enforcement lives in
+// the database (Row Level Security in supabase/schema*.sql). Even if someone
+// bypassed the UI, the database would still refuse a forbidden action.
 
-export const ROLES = { OWNER: 'owner', MANAGER: 'manager' }
-
-export function isOwner(profile) {
-  return profile?.role === ROLES.OWNER && profile?.active !== false
+export const ROLES = {
+  OWNER: 'owner',     // full access (the 3 directors)
+  MANAGER: 'manager', // update trees, tasks, inventory, produce; upload photos
+  WORKER: 'worker',   // complete assigned tasks, add inspections/usage, upload evidence
+  VIEWER: 'viewer',   // read-only reports
 }
 
-export function isManager(profile) {
-  return profile?.role === ROLES.MANAGER
+const roleOf = (p) => p?.role
+const active = (p) => p?.active !== false
+
+export const isOwner = (p) => active(p) && roleOf(p) === ROLES.OWNER
+export const isManager = (p) => active(p) && roleOf(p) === ROLES.MANAGER
+export const isWorker = (p) => active(p) && roleOf(p) === ROLES.WORKER
+export const isViewer = (p) => active(p) && roleOf(p) === ROLES.VIEWER
+
+// owner or manager
+export const isStaff = (p) => isOwner(p) || isManager(p)
+// owner, manager or worker (can record field activity)
+export const isFieldUser = (p) => isStaff(p) || isWorker(p)
+
+export const ROLE_LABELS = {
+  owner: 'Owner / Admin',
+  manager: 'Farm Manager',
+  worker: 'Worker',
+  viewer: 'Viewer',
 }
 
-// The capability map — mirrors the spec.
+// Capability map — mirrors the blueprint's permission table.
 export const can = {
-  // Trees
-  createTree: isOwner,
-  editTree: isOwner,
+  // Trees & orchard structure
+  registerTree: isStaff,
+  editTree: isStaff,
+  archiveTree: isStaff,
   deleteTree: isOwner,
-  archiveTree: isOwner,
-  addTreeLog: (p) => isOwner(p) || isManager(p), // manager's main power
+  manageZones: isStaff,
+
+  // Tree field activity
+  addInspection: isFieldUser,
+  addTreatment: isStaff,
+  addTreePhoto: isFieldUser,
+  recordReplacement: isStaff,
+  addTreeLog: isFieldUser,
 
   // Tasks
-  createTask: isOwner,
-  editTask: isOwner,
+  createTask: isStaff,
+  editTask: isStaff,
   deleteTask: isOwner,
-  assignTask: isOwner,
-  completeTask: (p) => isOwner(p) || isManager(p), // via a submission, not an edit
-  viewAllTasks: isOwner,
+  assignTask: isStaff,
+  completeTask: isFieldUser,
+  viewAllTasks: isStaff,
 
   // Inventory & produce
-  manageInventory: isOwner,
-  manageProduce: isOwner,
+  manageInventory: isStaff,
+  recordStockUsage: isFieldUser, // workers can record OUT movements
+  manageProduce: isStaff,
+  manageYield: isStaff,
 
   // Admin
   manageUsers: isOwner,
-  viewReports: isOwner,
-  viewEvidence: isOwner,
+  viewReports: () => true, // everyone, including viewers
+  viewEvidence: isStaff,
 }
 
-// Tree status options the manager (and owners) can log.
+// Tree status options.
 export const TREE_STATUSES = [
   'Healthy',
   'Needs Inspection',
@@ -62,3 +87,5 @@ export const STATUS_COLORS = {
   Missing: '#546e7a',
   Replaced: '#1565c0',
 }
+
+export const TASK_STATUSES = ['Pending', 'In Progress', 'Completed', 'Overdue', 'Cancelled']

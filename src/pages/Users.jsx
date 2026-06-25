@@ -67,7 +67,9 @@ export default function Users() {
                       onChange={(e) => setRole(p, e.target.value)}
                     >
                       <option value="owner">Owner / Admin (full access)</option>
-                      <option value="manager">Farm Manager (limited)</option>
+                      <option value="manager">Farm Manager</option>
+                      <option value="worker">Worker</option>
+                      <option value="viewer">Viewer (reports only)</option>
                     </select>
                   </td>
                   <td data-label="Status">
@@ -132,7 +134,9 @@ function AddUserModal({ onClose, onSaved }) {
         </Field>
         <Field label="Access level">
           <select value={form.role} onChange={set('role')}>
-            <option value="manager">Farm Manager (limited)</option>
+            <option value="manager">Farm Manager</option>
+            <option value="worker">Worker</option>
+            <option value="viewer">Viewer (reports only)</option>
             <option value="owner">Owner / Admin (full access)</option>
           </select>
         </Field>

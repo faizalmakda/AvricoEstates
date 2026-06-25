@@ -9,7 +9,8 @@ import NotConfigured from './pages/NotConfigured'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
-import Trees from './pages/Trees'
+import Zones from './pages/Zones'
+import TreeRegister from './pages/TreeRegister'
 import TreeDetail from './pages/TreeDetail'
 import Inventory from './pages/Inventory'
 import Produce from './pages/Produce'
@@ -40,7 +41,8 @@ export default function App() {
       <Route path="/" element={<Protected><Dashboard /></Protected>} />
       <Route path="/tasks" element={<Protected><Tasks /></Protected>} />
       <Route path="/tasks/:id" element={<Protected><TaskDetail /></Protected>} />
-      <Route path="/trees" element={<Protected><Trees /></Protected>} />
+      <Route path="/orchard" element={<Protected><Zones /></Protected>} />
+      <Route path="/trees" element={<Protected><TreeRegister /></Protected>} />
       <Route path="/trees/:id" element={<Protected><TreeDetail /></Protected>} />
       <Route path="/inventory" element={<Protected><Inventory /></Protected>} />
       <Route path="/produce" element={<Protected><Produce /></Protected>} />
