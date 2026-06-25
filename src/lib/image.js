@@ -3,7 +3,9 @@
 // browser — no server, no cost. Falls back to the original file if anything
 // goes wrong (e.g. an unsupported format).
 
-const DEFAULTS = { maxDim: 1280, targetBytes: 150 * 1024, minQuality: 0.4 }
+// Defaults tuned for clarity: 1600px max edge, ~300KB target. Clear enough to
+// zoom in and inspect leaves/disease, while still ~10x smaller than a raw photo.
+const DEFAULTS = { maxDim: 1600, targetBytes: 300 * 1024, minQuality: 0.5 }
 
 function loadImage(file) {
   return new Promise((resolve, reject) => {

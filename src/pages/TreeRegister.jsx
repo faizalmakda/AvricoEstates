@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
+import { uploadPhoto } from '../lib/upload'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
 } from '../components/ui'
@@ -147,6 +148,7 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     status: 'Healthy',
     notes: '',
   })
+  const [photo, setPhoto] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [duplicate, setDuplicate] = useState(null) // existing tree row if found
@@ -176,7 +178,7 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     }
 
     // 2) Create the new tree.
-    const { error: insErr } = await supabase.from('trees').insert({
+    const { data: created, error: insErr } = await supabase.from('trees').insert({
       code,
       zone_id: zone.id,
       row_number: Number(form.row),
@@ -187,10 +189,24 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
       status: form.status,
       notes: form.notes || null,
       created_by: user.id,
-    })
+    }).select('id').single()
+
+    if (insErr) { setBusy(false); return setError(insErr.message) }
+
+    // 3) Optional first photo for the tree's history.
+    if (photo && created) {
+      try {
+        const path = await uploadPhoto(photo, `trees/${created.id}/photos`)
+        await supabase.from('tree_photos').insert({
+          tree_id: created.id, photo_path: path, caption: 'Registration photo', uploaded_by: user.id,
+        })
+      } catch (err) {
+        setBusy(false)
+        return setError(`Tree saved, but the photo failed to upload: ${err.message}`)
+      }
+    }
     setBusy(false)
-    if (insErr) setError(insErr.message)
-    else onSaved()
+    onSaved()
   }
 
   // The duplicate dialog (matches the required logic exactly).
@@ -243,6 +259,9 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
         <Field label="Location / notes for finding it"><input value={form.location} onChange={set('location')} /></Field>
         <Field label="Planted on"><input type="date" value={form.planted_on} onChange={set('planted_on')} /></Field>
         <Field label="Notes"><textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
+        <Field label="Photo (optional)" hint="Auto-compressed before saving">
+          <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+        </Field>
 
         {error && <div className="banner banner-error">{error}</div>}
         <div className="modal-actions">

@@ -101,12 +101,51 @@ export default function Users() {
         </Card>
       )}
 
+      <StorageCard />
       <BackupCard />
 
       {showNew && (
         <AddUserModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />
       )}
     </div>
+  )
+}
+
+function StorageCard() {
+  const [usage, setUsage] = useState(null)
+  const [err, setErr] = useState(null)
+  useEffect(() => {
+    supabase.rpc('storage_usage').then(({ data, error }) => {
+      if (error) setErr(error.message)
+      else setUsage(Array.isArray(data) ? data[0] : data)
+    })
+  }, [])
+
+  const LIMIT = 1024 * 1024 * 1024 // 1 GB free tier
+  const bytes = Number(usage?.total_bytes || 0)
+  const pct = Math.min(100, Math.round((bytes / LIMIT) * 100))
+  const mb = (bytes / (1024 * 1024)).toFixed(1)
+  const color = pct > 85 ? '#b5392b' : pct > 60 ? '#ef6c00' : '#4d7a32'
+
+  return (
+    <Card>
+      <h2>Photo & file storage</h2>
+      {err ? (
+        <Banner kind="info">⚙️ Run <code>supabase/schema_v9_storage_usage.sql</code> in Supabase to enable the storage meter.</Banner>
+      ) : usage == null ? (
+        <p className="muted small">Checking…</p>
+      ) : (
+        <>
+          <div className="bar-track" style={{ margin: '10px 0' }}>
+            <div className="bar-fill" style={{ width: `${Math.max(pct, 1)}%`, background: color }} />
+          </div>
+          <p className="muted small"><strong>{mb} MB</strong> of 1024 MB used ({pct}%) · {usage.total_files} files</p>
+          {pct >= 80 && (
+            <Banner kind="error">Storage is getting full. Time to move photos to cheaper storage (Cloudflare R2 / Hostinger) or upgrade to Supabase Pro — just ask me to set it up.</Banner>
+          )}
+        </>
+      )}
+    </Card>
   )
 }
 
