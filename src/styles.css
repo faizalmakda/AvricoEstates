@@ -241,6 +241,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .status-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; }
 .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.zone-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 
 /* ---------- Tree register / code ---------- */
 .mono, .mono-link { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .02em; }

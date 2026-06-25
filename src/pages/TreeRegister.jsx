@@ -58,6 +58,7 @@ export default function TreeRegister() {
 
   return (
     <div>
+      <Link to="/orchard" className="back-link">← Orchard</Link>
       <PageHeader
         title="Tree Register"
         subtitle={`${visible.length} tree${visible.length === 1 ? '' : 's'}${zoneFilter ? ` in ${zoneFilter}` : ''}`}

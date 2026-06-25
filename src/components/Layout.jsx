@@ -9,8 +9,7 @@ import logoMark from '../assets/logo-mark.png'
 // Navigation items. `show` decides visibility based on the user's role.
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '🏠', show: () => true, end: true },
-  { to: '/orchard', label: 'Orchard', icon: '🗺️', show: () => true },
-  { to: '/trees', label: 'Trees', icon: '🌳', show: () => true },
+  { to: '/orchard', label: 'Orchard', icon: '🌳', show: () => true },
   { to: '/tasks', label: 'Tasks', icon: '✅', show: () => true },
   { to: '/inventory', label: 'Inventory', icon: '📦', show: () => true },
   { to: '/requests', label: 'Requests', icon: '🧾', show: (p) => can.viewRequests(p) },
