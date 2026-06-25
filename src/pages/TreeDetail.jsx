@@ -154,13 +154,17 @@ export default function TreeDetail() {
         <>
           {can.addTreePhoto(profile) && <AddPhoto treeId={id} userId={user.id} onDone={load} />}
           {data.photos.length === 0 ? (
-            <Card><p className="muted">No photos yet.</p></Card>
+            <Card><p className="muted">No photos yet. Add one above to start this tree's photo history.</p></Card>
           ) : (
             <div className="photo-grid">
               {data.photos.map((p) => (
                 <a key={p.id} href={evidenceUrl(p.photo_path)} target="_blank" rel="noreferrer" className="photo-tile">
                   <img src={evidenceUrl(p.photo_path)} alt={p.caption || 'Tree photo'} />
-                  {p.caption && <span>{p.caption}</span>}
+                  <span>
+                    <strong>{new Date(p.created_at).toLocaleDateString()}</strong>
+                    {p.caption ? ` · ${p.caption}` : ''}
+                    <br />{nameOf(names, p.uploaded_by)}
+                  </span>
                 </a>
               ))}
             </div>

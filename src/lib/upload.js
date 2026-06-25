@@ -1,15 +1,17 @@
 import { supabase } from '../supabaseClient'
+import { compressImage } from './image'
 
 // Uploads a photo File to the 'evidence' bucket and returns its storage path.
-// We never overwrite: every upload gets a unique, time-stamped name so old
-// evidence is always preserved.
+// Photos are compressed to a small JPEG first to save storage. We never
+// overwrite: every upload gets a unique, time-stamped name.
 export async function uploadPhoto(file, folder = 'misc') {
   if (!file) return null
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const small = await compressImage(file).catch(() => file)
+  const ext = (small.name.split('.').pop() || 'jpg').toLowerCase()
   const safe = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabase.storage
     .from('evidence')
-    .upload(safe, file, { cacheControl: '3600', upsert: false })
+    .upload(safe, small, { cacheControl: '3600', upsert: false })
   if (error) throw error
   return safe
 }
