@@ -172,9 +172,16 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
       .maybeSingle()
 
     if (existing) {
-      setBusy(false)
-      setDuplicate(existing) // show the "already exists" dialog
-      return
+      if (existing.archived || existing.deleted_at) {
+        // A previously-removed tree still occupies this position — clear it out
+        // completely, then create a fresh one below.
+        const { error: delErr } = await supabase.rpc('delete_tree_cascade', { _tree_id: existing.id })
+        if (delErr) { setBusy(false); return setError(delErr.message) }
+      } else {
+        setBusy(false)
+        setDuplicate(existing) // genuinely active tree — show the "already exists" dialog
+        return
+      }
     }
 
     // 2) Create the new tree.

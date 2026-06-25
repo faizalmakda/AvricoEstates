@@ -49,11 +49,15 @@ export default function TreeDetail() {
   if (!tree) return <Banner kind="error">Tree not found.</Banner>
 
   const remove = async () => {
-    if (!confirm('Remove this tree from the orchard? Its history is kept and an owner can restore it if needed.')) return
-    const { error } = await supabase
-      .from('trees')
-      .update({ archived: true, deleted_at: new Date().toISOString() })
-      .eq('id', id)
+    if (!confirm('Permanently delete this tree and ALL its records (inspections, treatments, photos, status logs)?\n\nThis cannot be undone. The position will be free to register again.')) return
+    // Best-effort cleanup of this tree's photos from storage.
+    const paths = [
+      ...data.photos.map((p) => p.photo_path),
+      ...data.inspections.map((i) => i.photo_path),
+      ...data.logs.map((l) => l.photo_path),
+    ].filter(Boolean)
+    if (paths.length) await supabase.storage.from('evidence').remove(paths)
+    const { error } = await supabase.rpc('delete_tree_cascade', { _tree_id: id })
     if (error) return alert(error.message)
     navigate('/orchard')
   }
