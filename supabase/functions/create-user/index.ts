@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     const email: string = (body.email ?? '').trim().toLowerCase()
     const password: string = body.password ?? ''
     const fullName: string = (body.full_name ?? '').trim()
-    const role: string = body.role === 'owner' ? 'owner' : 'manager'
+    const role: string = ['owner', 'manager', 'worker', 'viewer'].includes(body.role) ? body.role : 'manager'
 
     if (!email || password.length < 6) {
       return json({ error: 'Email and a password of at least 6 characters are required.' }, 400)

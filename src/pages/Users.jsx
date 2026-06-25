@@ -30,6 +30,14 @@ export default function Users() {
     load()
   }
 
+  const rename = async (p) => {
+    const name = prompt('Full name:', p.full_name || '')
+    if (name == null || !name.trim()) return
+    const { error } = await supabase.from('profiles').update({ full_name: name.trim() }).eq('id', p.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
   const owners = people.filter((p) => p.role === 'owner').length
 
   return (
@@ -79,6 +87,7 @@ export default function Users() {
                     </span>
                   </td>
                   <td className="row-actions">
+                    <button className="link" onClick={() => rename(p)}>Rename</button>
                     {p.id !== user.id && (
                       <button className="link" onClick={() => toggleActive(p)}>
                         {p.active ? 'Disable' : 'Enable'}
