@@ -210,8 +210,15 @@ function CompleteForm({ taskId, userId, onDone }) {
 function EditTaskButton({ task, onSaved }) {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(task)
+  const [people, setPeople] = useState([])
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
+  useEffect(() => {
+    if (!open) return
+    supabase.from('profiles').select('id,full_name,role').eq('active', true).order('full_name')
+      .then(({ data }) => setPeople(data ?? []))
+  }, [open])
 
   const save = async (e) => {
     e.preventDefault()
@@ -221,6 +228,7 @@ function EditTaskButton({ task, onSaved }) {
       .update({
         title: form.title,
         instructions: form.instructions,
+        assigned_to: form.assigned_to || null,
         priority: form.priority,
         due_date: form.due_date || null,
         updated_at: new Date().toISOString(),
@@ -241,6 +249,14 @@ function EditTaskButton({ task, onSaved }) {
       </Field>
       <Field label="Instructions">
         <textarea rows={3} value={form.instructions || ''} onChange={set('instructions')} />
+      </Field>
+      <Field label="Assigned to" hint="Change this to re-assign the task to someone else.">
+        <select value={form.assigned_to || ''} onChange={set('assigned_to')}>
+          <option value="">— Unassigned —</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>{p.full_name} {p.role === 'owner' ? '(owner)' : ''}</option>
+          ))}
+        </select>
       </Field>
       <div className="row">
         <Field label="Priority">

@@ -10,8 +10,8 @@ const STATUS_COLOR = {
   rejected: '#b5392b', cancelled: '#6f7a6a',
 }
 
-// Money formatting (Malawian Kwacha). Tell me if you'd rather use a different currency.
-const money = (n) => (n == null || n === '' ? null : `MK ${Number(n).toLocaleString()}`)
+// Money formatting (Malawian Kwacha).
+const money = (n) => (n == null || n === '' ? null : `MWK ${Number(n).toLocaleString()}`)
 
 export default function Requests() {
   const { profile, user } = useAuth()
@@ -214,7 +214,7 @@ function RequestModal({ request, items, zones, userId, onClose, onSaved }) {
           <Field label="Quantity"><input type="number" step="any" min="0" value={f.quantity} onChange={set('quantity')} required /></Field>
           <Field label="Unit"><input value={f.unit} onChange={set('unit')} placeholder="bags, litres…" /></Field>
         </div>
-        <Field label="Estimated cost (MK)" hint="Optional — can be added later">
+        <Field label="Estimated cost (MWK)" hint="Optional — can be added later">
           <input type="number" step="any" min="0" value={f.estimated_cost} onChange={set('estimated_cost')} />
         </Field>
         <Field label="For which zone (optional)">
