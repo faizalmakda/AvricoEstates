@@ -23,7 +23,7 @@ export default function Tasks() {
   const [items, setItems] = useState([])
   const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('Open')
+  const [filter, setFilter] = useState('Mine')
   const [showNew, setShowNew] = useState(false)
 
   const load = async () => {
@@ -56,8 +56,12 @@ export default function Tasks() {
   }, []) // eslint-disable-line
 
   const open = (t) => !['Completed', 'Cancelled'].includes(t.status)
+  const mineCount = tasks.filter((t) => t.assigned_to === profile?.id && open(t)).length
   const visible = tasks.filter((t) =>
-    filter === 'All' ? true : filter === 'Open' ? open(t) : t.status === 'Completed'
+    filter === 'Mine' ? t.assigned_to === profile?.id
+      : filter === 'All' ? true
+        : filter === 'Open' ? open(t)
+          : t.status === 'Completed'
   )
 
   return (
@@ -73,13 +77,13 @@ export default function Tasks() {
       />
 
       <div className="segmented">
-        {['Open', 'Completed', 'All'].map((f) => (
+        {['Mine', 'Open', 'Completed', 'All'].map((f) => (
           <button
             key={f}
             className={filter === f ? 'seg active' : 'seg'}
             onClick={() => setFilter(f)}
           >
-            {f}
+            {f === 'Mine' && mineCount > 0 ? `Mine (${mineCount})` : f}
           </button>
         ))}
       </div>
@@ -87,8 +91,10 @@ export default function Tasks() {
       {loading ? (
         <Spinner />
       ) : visible.length === 0 ? (
-        <EmptyState icon="✅" title="No tasks here">
-          {owner ? 'Create a task to assign work to the farm manager.' : 'You have no tasks in this view.'}
+        <EmptyState icon="✅" title={filter === 'Mine' ? 'Nothing assigned to you' : 'No tasks here'}>
+          {filter === 'Mine'
+            ? 'You have no tasks assigned right now. Tap “All” to see every task.'
+            : owner ? 'Create a task to assign work to the team.' : 'You have no tasks in this view.'}
         </EmptyState>
       ) : (
         <div className="card-list">
