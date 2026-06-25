@@ -14,3 +14,10 @@ export async function fetchNameMap() {
 }
 
 export const nameOf = (map, id) => map[id] || 'Someone'
+
+// "Last edited by Jane · 25/06/2026" — or null if the row was never edited.
+export function lastEdited(map, row) {
+  if (!row?.updated_by) return null
+  const when = row.updated_at ? new Date(row.updated_at).toLocaleDateString() : ''
+  return `Last edited by ${nameOf(map, row.updated_by)}${when ? ` · ${when}` : ''}`
+}

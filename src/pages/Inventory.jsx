@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can } from '../lib/permissions'
-import { fetchNameMap, nameOf } from '../lib/people'
+import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { Button, PageHeader, Spinner, Modal, Field, EmptyState, Card, Badge, Banner } from '../components/ui'
 
 const CATEGORIES = ['Fertiliser', 'Chemicals', 'Tools', 'Irrigation parts', 'Bags', 'Crates', 'Fuel', 'Other']
@@ -149,7 +149,7 @@ export default function Inventory() {
       )}
 
       {editing && (
-        <ItemModal item={editing === 'new' ? null : editing} userId={user.id}
+        <ItemModal item={editing === 'new' ? null : editing} userId={user.id} names={names}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load() }} />
       )}
       {moving && (
@@ -264,7 +264,7 @@ function HistoryModal({ item, movements, names, onClose }) {
   )
 }
 
-function ItemModal({ item, userId, onClose, onSaved }) {
+function ItemModal({ item, userId, names, onClose, onSaved }) {
   const [form, setForm] = useState(
     item || { name: '', category: '', unit: '', quantity: 0, min_stock: 0, location: '', notes: '' }
   )
@@ -313,6 +313,7 @@ function ItemModal({ item, userId, onClose, onSaved }) {
         <Field label="Location"><input value={form.location || ''} onChange={set('location')} placeholder="e.g. Main shed" /></Field>
         <Field label="Notes"><textarea rows={2} value={form.notes || ''} onChange={set('notes')} /></Field>
         {item && <p className="muted small">To change the stock count, close this and use <strong>Add</strong> / <strong>Use</strong> / <strong>Transfer</strong>.</p>}
+        {item && lastEdited(names, item) && <p className="muted small">✎ {lastEdited(names, item)}</p>}
         {error && <div className="banner banner-error">{error}</div>}
         <div className="modal-actions">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>

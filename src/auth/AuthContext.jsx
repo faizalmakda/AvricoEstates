@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recovery, setRecovery] = useState(false)
 
   const loadProfile = useCallback(async (userId) => {
     if (!userId) return setProfile(null)
@@ -32,7 +33,9 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, sess) => {
+      // User arrived from a "forgot password" email — show the reset screen.
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       setSession(sess)
       await loadProfile(sess?.user?.id)
     })
@@ -53,6 +56,14 @@ export function AuthProvider({ children }) {
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password }),
     signOut: () => supabase.auth.signOut(),
+    // Password management
+    passwordRecovery: recovery,
+    clearRecovery: () => setRecovery(false),
+    updatePassword: (password) => supabase.auth.updateUser({ password }),
+    sendPasswordReset: (email) =>
+      supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+      }),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

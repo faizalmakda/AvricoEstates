@@ -7,14 +7,26 @@ import { Button, Field } from '../components/ui'
 import logo from '../assets/logo.jpg'
 
 export default function Login() {
-  const { user, signIn, loading } = useAuth()
+  const { user, signIn, loading, sendPasswordReset } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState(null)
 
   if (!loading && user) return <Navigate to="/" replace />
+
+  const forgot = async () => {
+    setError(null); setNotice(null)
+    if (isDemo) return setError('Password reset is not available in demo mode.')
+    if (!email.trim()) return setError('Type your email above first, then tap “Forgot password”.')
+    setBusy(true)
+    const { error } = await sendPasswordReset(email)
+    setBusy(false)
+    if (error) setError(error.message)
+    else setNotice('Check your email for a link to reset your password.')
+  }
 
   const doSignIn = async (em, pw) => {
     setError(null)
@@ -82,10 +94,15 @@ export default function Login() {
         </Field>
 
         {error && <div className="banner banner-error">{error}</div>}
+        {notice && <div className="banner banner-info">{notice}</div>}
 
         <Button type="submit" className="btn-block" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
+
+        <button type="button" className="link" style={{ marginTop: 10 }} onClick={forgot} disabled={busy}>
+          Forgot password?
+        </button>
 
         <p className="muted small">
           Accounts are created by a director. Ask an owner if you need access.

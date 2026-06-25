@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
-import { fetchNameMap, nameOf } from '../lib/people'
+import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
@@ -48,14 +48,14 @@ export default function TreeDetail() {
   if (loading) return <Spinner />
   if (!tree) return <Banner kind="error">Tree not found.</Banner>
 
-  const archive = async () => {
-    if (!confirm('Archive this tree? It will be hidden but its data is kept (soft-delete).')) return
+  const remove = async () => {
+    if (!confirm('Remove this tree from the orchard? Its history is kept and an owner can restore it if needed.')) return
     const { error } = await supabase
       .from('trees')
       .update({ archived: true, deleted_at: new Date().toISOString() })
       .eq('id', id)
     if (error) return alert(error.message)
-    navigate('/trees')
+    navigate('/orchard')
   }
 
   return (
@@ -86,12 +86,13 @@ export default function TreeDetail() {
               <Meta label="Last inspection" value={tree.last_inspection_on || '—'} />
             </div>
             {tree.notes && <p className="instructions">{tree.notes}</p>}
+            {lastEdited(names, tree) && <p className="muted small">✎ {lastEdited(names, tree)}</p>}
             <div className="detail-actions">
               {can.editTree(profile) && <Button variant="secondary" onClick={() => setEditing(true)}>Edit</Button>}
               {can.recordReplacement(profile) && (
                 <ReplaceButton tree={tree} userId={user.id} onDone={load} />
               )}
-              {can.archiveTree(profile) && <Button variant="ghost" onClick={archive}>Archive</Button>}
+              {can.archiveTree(profile) && <Button variant="danger" onClick={remove}>Remove tree</Button>}
             </div>
           </>
         )}

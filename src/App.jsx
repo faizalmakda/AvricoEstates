@@ -5,6 +5,7 @@ import { Spinner } from './components/ui'
 import { can } from './lib/permissions'
 
 import Login from './pages/Login'
+import SetPassword from './pages/SetPassword'
 import NotConfigured from './pages/NotConfigured'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
@@ -31,10 +32,12 @@ function Protected({ children, ownerOnly = false }) {
 }
 
 export default function App() {
-  const { isConfigured, loading } = useAuth()
+  const { isConfigured, loading, passwordRecovery } = useAuth()
 
   if (!isConfigured) return <NotConfigured />
   if (loading) return <Spinner />
+  // Arrived from a password-reset email — force the "set new password" screen.
+  if (passwordRecovery) return <SetPassword />
 
   return (
     <Routes>

@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
+import { Button, Modal, Field } from './ui'
 import logoMark from '../assets/logo-mark.png'
 
 // Navigation items. `show` decides visibility based on the user's role.
@@ -22,6 +23,7 @@ export default function Layout({ children }) {
   const { profile, signOut, user } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [pwOpen, setPwOpen] = useState(false)
   const items = NAV.filter((n) => n.show(profile))
 
   const handleSignOut = async () => {
@@ -29,6 +31,7 @@ export default function Layout({ children }) {
     await signOut()
     navigate('/login')
   }
+  const openChangePw = () => { setMenuOpen(false); setPwOpen(true) }
 
   return (
     <div className="app-shell">
@@ -55,6 +58,7 @@ export default function Layout({ children }) {
               {ROLE_LABELS[profile?.role] ?? 'User'}
             </div>
           </div>
+          <button className="link" onClick={openChangePw}>Change password</button>
           <button className="btn btn-ghost btn-block" onClick={handleSignOut}>
             Sign out
           </button>
@@ -99,12 +103,17 @@ export default function Layout({ children }) {
                 </NavLink>
               ))}
             </nav>
+            <button className="btn btn-ghost btn-block" onClick={openChangePw}>
+              Change password
+            </button>
             <button className="btn btn-danger btn-block" onClick={handleSignOut}>
               Sign out
             </button>
           </div>
         </div>
       )}
+
+      {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
 
       <main className="content">
         {isDemo && (
@@ -136,5 +145,51 @@ export default function Layout({ children }) {
         ))}
       </nav>
     </div>
+  )
+}
+
+function ChangePasswordModal({ onClose }) {
+  const { updatePassword } = useAuth()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(false)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (password.length < 6) return setError('Password must be at least 6 characters.')
+    if (password !== confirm) return setError('The two passwords do not match.')
+    if (isDemo) return setError('Changing password is not available in demo mode.')
+    setBusy(true); setError(null)
+    const { error } = await updatePassword(password)
+    setBusy(false)
+    if (error) setError(error.message)
+    else setDone(true)
+  }
+
+  return (
+    <Modal title="Change password" onClose={onClose}>
+      {done ? (
+        <>
+          <div className="banner banner-info">Your password has been updated.</div>
+          <div className="modal-actions"><Button onClick={onClose}>Done</Button></div>
+        </>
+      ) : (
+        <form onSubmit={submit}>
+          <Field label="New password">
+            <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </Field>
+          <Field label="Confirm new password">
+            <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+          </Field>
+          {error && <div className="banner banner-error">{error}</div>}
+          <div className="modal-actions">
+            <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Update password'}</Button>
+          </div>
+        </form>
+      )}
+    </Modal>
   )
 }

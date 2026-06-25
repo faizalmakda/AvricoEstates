@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can } from '../lib/permissions'
-import { fetchNameMap, nameOf } from '../lib/people'
+import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { Button, PageHeader, Spinner, Modal, Field, EmptyState, Card, Badge, Banner } from '../components/ui'
 
 const STATUS_COLOR = {
   requested: '#f9a825', approved: '#1565c0', purchased: '#2e7d32',
   rejected: '#b5392b', cancelled: '#6f7a6a',
 }
+
+// Money formatting (Malawian Kwacha). Tell me if you'd rather use a different currency.
+const money = (n) => (n == null || n === '' ? null : `MK ${Number(n).toLocaleString()}`)
 
 export default function Requests() {
   const { profile, user } = useAuth()
@@ -18,6 +21,7 @@ export default function Requests() {
   const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
+  const [editing, setEditing] = useState(null)
   const [purchasing, setPurchasing] = useState(null)
   const [needsMigration, setNeedsMigration] = useState(false)
 
@@ -53,11 +57,16 @@ export default function Requests() {
   const awaiting = reqs.filter((r) => r.status === 'requested')
   const toBuy = reqs.filter((r) => r.status === 'approved')
   const history = reqs.filter((r) => ['purchased', 'rejected', 'cancelled'].includes(r.status))
+  const awaitingTotal = awaiting.reduce((s, r) => s + Number(r.estimated_cost || 0), 0)
+  const canEdit = (r) => can.approveRequest(profile) || r.requested_by === user.id
 
   const Row = ({ r, actions }) => (
     <div className="req-row">
       <div className="req-main">
-        <div className="req-title">{r.quantity} {r.unit || ''} · {r.item_name}</div>
+        <div className="req-title">
+          {r.quantity} {r.unit || ''} · {r.item_name}
+          {money(r.estimated_cost) && <span className="muted"> · est. {money(r.estimated_cost)}</span>}
+        </div>
         <div className="muted small">
           {`by ${nameOf(names, r.requested_by)}`}
           {r.zone?.code ? ` · Zone ${r.zone.code}` : ''}
@@ -67,6 +76,7 @@ export default function Requests() {
           <div className="muted small">Purchased {r.purchased_quantity} {r.unit || ''} by {nameOf(names, r.purchased_by)}</div>
         )}
         {r.status === 'rejected' && r.notes && <div className="muted small">Rejected: {r.notes}</div>}
+        {lastEdited(names, r) && <div className="muted small">✎ {lastEdited(names, r)}</div>}
       </div>
       <div className="req-side">
         <Badge color={STATUS_COLOR[r.status]}>{r.status}</Badge>
@@ -90,12 +100,19 @@ export default function Requests() {
       {loading ? <Spinner /> : (
         <>
           <Card>
-            <div className="card-head"><h2>Awaiting approval</h2><Badge color="#f9a825">{awaiting.length}</Badge></div>
+            <div className="card-head">
+              <h2>Awaiting approval</h2>
+              <Badge color="#f9a825">{awaiting.length}</Badge>
+            </div>
+            {awaitingTotal > 0 && (
+              <p className="muted small">Estimated cost of pending requests: <strong>{money(awaitingTotal)}</strong></p>
+            )}
             {awaiting.length === 0 ? <p className="muted">Nothing waiting.</p> : awaiting.map((r) => (
               <Row key={r.id} r={r} actions={
                 <>
                   {can.approveRequest(profile) && <button className="link" onClick={() => approve(r)}>Approve</button>}
                   {can.approveRequest(profile) && <button className="link danger" onClick={() => reject(r)}>Reject</button>}
+                  {canEdit(r) && <button className="link" onClick={() => setEditing(r)}>Edit</button>}
                   {!can.approveRequest(profile) && r.requested_by === user.id && <button className="link" onClick={() => cancel(r)}>Cancel</button>}
                 </>
               } />
@@ -106,9 +123,10 @@ export default function Requests() {
             <div className="card-head"><h2>To purchase</h2><Badge color="#1565c0">{toBuy.length}</Badge></div>
             {toBuy.length === 0 ? <p className="muted">Nothing approved to buy.</p> : toBuy.map((r) => (
               <Row key={r.id} r={r} actions={
-                can.purchaseRequest(profile)
-                  ? <button className="link" onClick={() => setPurchasing(r)}>Mark purchased</button>
-                  : null
+                <>
+                  {can.purchaseRequest(profile) && <button className="link" onClick={() => setPurchasing(r)}>Mark purchased</button>}
+                  {canEdit(r) && <button className="link" onClick={() => setEditing(r)}>Edit</button>}
+                </>
               } />
             ))}
           </Card>
@@ -122,9 +140,10 @@ export default function Requests() {
         </>
       )}
 
-      {showNew && (
-        <NewRequestModal items={items} zones={zones} userId={user.id}
-          onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />
+      {(showNew || editing) && (
+        <RequestModal request={editing} items={items} zones={zones} userId={user.id}
+          onClose={() => { setShowNew(false); setEditing(null) }}
+          onSaved={() => { setShowNew(false); setEditing(null); load() }} />
       )}
       {purchasing && (
         <PurchaseModal req={purchasing} userId={user.id}
@@ -134,8 +153,17 @@ export default function Requests() {
   )
 }
 
-function NewRequestModal({ items, zones, userId, onClose, onSaved }) {
-  const [f, setF] = useState({ item_id: '', item_name: '', quantity: '', unit: '', zone_id: '', reason: '' })
+function RequestModal({ request, items, zones, userId, onClose, onSaved }) {
+  const editingExisting = Boolean(request)
+  const [f, setF] = useState({
+    item_id: request?.item_id || '',
+    item_name: request?.item_name || '',
+    quantity: request?.quantity ?? '',
+    unit: request?.unit || '',
+    zone_id: request?.zone_id || '',
+    reason: request?.reason || '',
+    estimated_cost: request?.estimated_cost ?? '',
+  })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -153,17 +181,25 @@ function NewRequestModal({ items, zones, userId, onClose, onSaved }) {
     if (!name) return setError('Choose an item or type what you need.')
     if (!qty || qty <= 0) return setError('Enter a quantity greater than 0.')
     setBusy(true); setError(null)
-    const { error } = await supabase.from('inventory_requests').insert({
+    const base = {
       item_id: f.item_id || null, item_name: name, quantity: qty, unit: f.unit || null,
-      zone_id: f.zone_id || null, reason: f.reason || null, requested_by: userId,
-    })
+      zone_id: f.zone_id || null, reason: f.reason || null,
+    }
+    const write = (payload) => editingExisting
+      ? supabase.from('inventory_requests').update(payload).eq('id', request.id)
+      : supabase.from('inventory_requests').insert({ ...payload, requested_by: userId })
+
+    const estimated_cost = f.estimated_cost === '' ? null : Number(f.estimated_cost)
+    let { error } = await write({ ...base, estimated_cost })
+    // If schema_v4 hasn't been run yet, save without the cost rather than failing.
+    if (error && /estimated_cost/.test(error.message || '')) ({ error } = await write(base))
     setBusy(false)
     if (error) setError(error.message)
     else onSaved()
   }
 
   return (
-    <Modal title="Request inventory" onClose={onClose}>
+    <Modal title={editingExisting ? 'Edit request' : 'Request inventory'} onClose={onClose}>
       <form onSubmit={save}>
         <Field label="Existing item (optional)">
           <select value={f.item_id} onChange={pickItem}>
@@ -178,6 +214,9 @@ function NewRequestModal({ items, zones, userId, onClose, onSaved }) {
           <Field label="Quantity"><input type="number" step="any" min="0" value={f.quantity} onChange={set('quantity')} required /></Field>
           <Field label="Unit"><input value={f.unit} onChange={set('unit')} placeholder="bags, litres…" /></Field>
         </div>
+        <Field label="Estimated cost (MK)" hint="Optional — can be added later">
+          <input type="number" step="any" min="0" value={f.estimated_cost} onChange={set('estimated_cost')} />
+        </Field>
         <Field label="For which zone (optional)">
           <select value={f.zone_id} onChange={set('zone_id')}>
             <option value="">— Not zone-specific —</option>
@@ -188,7 +227,7 @@ function NewRequestModal({ items, zones, userId, onClose, onSaved }) {
         {error && <div className="banner banner-error">{error}</div>}
         <div className="modal-actions">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send request'}</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : editingExisting ? 'Save changes' : 'Send request'}</Button>
         </div>
       </form>
     </Modal>

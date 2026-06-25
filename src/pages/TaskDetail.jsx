@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner, isManager } from '../lib/permissions'
-import { fetchNameMap, nameOf } from '../lib/people'
+import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { isOverdue, taskStatusColor as statusColor } from './Tasks'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
@@ -70,6 +70,7 @@ export default function TaskDetail() {
         {(task.zone?.code || task.tree?.code || task.item?.name) && (
           <p className="muted small">🔗 Linked: {[task.zone?.code && `Zone ${task.zone.code}`, task.tree?.code, task.item?.name].filter(Boolean).join(' · ')}</p>
         )}
+        {lastEdited(names, task) && <p className="muted small">✎ {lastEdited(names, task)}</p>}
         {task.instructions && (
           <>
             <h3 className="section-label">Instructions</h3>
