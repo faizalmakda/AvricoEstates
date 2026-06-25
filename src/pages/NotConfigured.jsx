@@ -1,12 +1,11 @@
 // Shown when the app was built without Supabase connection details.
+import logo from '../assets/logo.jpg'
+
 export default function NotConfigured() {
   return (
     <div className="centered">
       <div className="card auth-card">
-        <div className="brand brand-lg">
-          <span className="brand-mark">🌳</span>
-          <span className="brand-name">Avrico Estates</span>
-        </div>
+        <img className="auth-logo" src={logo} alt="Avrico Estates" />
         <h2>Almost there — one setup step left</h2>
         <p className="muted">
           This app needs to be connected to your free Supabase database before

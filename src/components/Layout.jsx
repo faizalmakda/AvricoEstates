@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
+import logo from '../assets/logo.jpg'
 
 // Navigation items. `show` decides visibility based on the user's role.
 const NAV = [
@@ -34,7 +35,7 @@ export default function Layout({ children }) {
       {/* Desktop sidebar */}
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">🌳</span>
+          <span className="brand-logo" style={{ backgroundImage: `url(${logo})` }} />
           <span className="brand-name">Avrico Estates</span>
         </div>
 
@@ -63,7 +64,7 @@ export default function Layout({ children }) {
       {/* Mobile top bar (with account menu + sign out) */}
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">🌳</span>
+          <span className="brand-logo" style={{ backgroundImage: `url(${logo})` }} />
           <span className="brand-name">Avrico Estates</span>
         </div>
         <button

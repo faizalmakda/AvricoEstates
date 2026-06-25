@@ -1,15 +1,17 @@
 :root {
-  --green: #1b5e20;
-  --green-2: #2e7d32;
-  --green-soft: #e8f0e6;
-  --bg: #f4f6f2;
+  /* Palette taken from the Avrico Estates logo */
+  --green: #21402b;        /* deep forest green — brand primary */
+  --green-2: #4d7a32;      /* olive field green — actions */
+  --green-soft: #e8eede;   /* soft olive tint */
+  --red: #b5392b;          /* brick-red sun accent */
+  --bg: #f6f2e8;           /* cream background */
   --card: #ffffff;
-  --ink: #1f2a22;
-  --muted: #6b7a70;
-  --line: #e2e8e0;
-  --danger: #c62828;
+  --ink: #243027;
+  --muted: #6f7a6a;
+  --line: #e6e1d4;
+  --danger: #b5392b;
   --radius: 14px;
-  --shadow: 0 1px 3px rgba(20, 40, 25, 0.08), 0 4px 16px rgba(20, 40, 25, 0.05);
+  --shadow: 0 1px 3px rgba(30, 40, 25, 0.08), 0 4px 16px rgba(30, 40, 25, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -42,6 +44,16 @@ a { color: inherit; }
 .brand-name { font-size: 1.05rem; }
 .brand-lg { justify-content: center; font-size: 1.3rem; margin-bottom: 8px; }
 .brand-lg .brand-mark { font-size: 1.8rem; }
+
+/* Circular logo badge that frames the emblem (crops the wordmark) for nav bars. */
+.brand-logo {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background-color: #fff; background-repeat: no-repeat;
+  background-position: center 30%; background-size: 150%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+}
+/* Full logo (with wordmark) for the login / setup screens. */
+.auth-logo { width: 190px; max-width: 70%; height: auto; display: block; margin: 0 auto 6px; }
 .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; flex: 1; }
 .nav-link {
   display: flex; align-items: center; gap: 12px; padding: 11px 12px;

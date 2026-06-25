@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { isDemo } from '../supabaseClient'
 import { DEMO_ACCOUNTS } from '../lib/mockBackend'
 import { Button, Field } from '../components/ui'
+import logo from '../assets/logo.jpg'
 
 export default function Login() {
   const { user, signIn, loading } = useAuth()
@@ -32,10 +33,7 @@ export default function Login() {
   return (
     <div className="centered">
       <form className="card auth-card" onSubmit={onSubmit}>
-        <div className="brand brand-lg">
-          <span className="brand-mark">🌳</span>
-          <span className="brand-name">Avrico Estates</span>
-        </div>
+        <img className="auth-logo" src={logo} alt="Avrico Estates" />
         <p className="muted">Sign in to manage the estate.</p>
 
         {isDemo && (
