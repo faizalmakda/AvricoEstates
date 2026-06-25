@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can } from '../lib/permissions'
 import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
+import { useNotifications } from '../notifications/NotificationsContext'
 import { Button, PageHeader, Spinner, Modal, Field, EmptyState, Card, Badge, Banner } from '../components/ui'
 
 const STATUS_COLOR = {
@@ -41,6 +42,8 @@ export default function Requests() {
     setLoading(false)
   }
   useEffect(() => { load() }, [])
+  const { markSeen } = useNotifications()
+  useEffect(() => { markSeen('requests') }, [markSeen])
 
   const setStatus = async (req, patch) => {
     const { error } = await supabase.from('inventory_requests').update(patch).eq('id', req.id)

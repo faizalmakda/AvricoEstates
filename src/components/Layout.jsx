@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { useNotifications } from '../notifications/NotificationsContext'
 import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
@@ -21,10 +22,12 @@ const NAV = [
 
 export default function Layout({ children }) {
   const { profile, signOut, user } = useAuth()
+  const { counts } = useNotifications()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
   const items = NAV.filter((n) => n.show(profile))
+  const badgeFor = (to) => (to === '/tasks' ? counts.tasks : to === '/requests' ? counts.requests : 0)
 
   const handleSignOut = async () => {
     setMenuOpen(false)
@@ -47,6 +50,7 @@ export default function Layout({ children }) {
             <NavLink key={n.to} to={n.to} end={n.end} className="nav-link">
               <span className="nav-icon">{n.icon}</span>
               <span>{n.label}</span>
+              {badgeFor(n.to) > 0 && <span className="nav-badge">{badgeFor(n.to)}</span>}
             </NavLink>
           ))}
         </nav>
@@ -100,6 +104,7 @@ export default function Layout({ children }) {
                 >
                   <span className="nav-icon">{n.icon}</span>
                   <span>{n.label}</span>
+                  {badgeFor(n.to) > 0 && <span className="nav-badge">{badgeFor(n.to)}</span>}
                 </NavLink>
               ))}
             </nav>
@@ -141,6 +146,7 @@ export default function Layout({ children }) {
           <NavLink key={n.to} to={n.to} end={n.end} className="tab">
             <span className="tab-icon">{n.icon}</span>
             <span className="tab-label">{n.label}</span>
+            {badgeFor(n.to) > 0 && <span className="tab-badge">{badgeFor(n.to)}</span>}
           </NavLink>
         ))}
       </nav>

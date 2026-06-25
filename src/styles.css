@@ -252,6 +252,21 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 }
 .dash-section:first-of-type { margin-top: 14px; }
 
+/* "New items" notification badges on nav */
+.nav-badge {
+  margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 10px; background: #c62828; color: #fff;
+  font-size: .72rem; font-weight: 800; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tab { position: relative; }
+.tab-badge {
+  position: absolute; top: 2px; left: 50%; transform: translateX(6px);
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+  background: #c62828; color: #fff; font-size: .64rem; font-weight: 800; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+
 /* ---------- Tree register / code ---------- */
 .mono, .mono-link { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
 .mono-link { color: var(--green-2); text-decoration: none; }

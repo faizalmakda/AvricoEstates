@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner } from '../lib/permissions'
 import { fetchNameMap, nameOf } from '../lib/people'
+import { useNotifications } from '../notifications/NotificationsContext'
 import { Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState } from '../components/ui'
 
 // A task is overdue if its due date has passed and it isn't finished/cancelled.
@@ -25,6 +26,8 @@ export default function Tasks() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('Mine')
   const [showNew, setShowNew] = useState(false)
+  const { markSeen } = useNotifications()
+  useEffect(() => { markSeen('tasks') }, [markSeen])
 
   const load = async () => {
     setLoading(true)
