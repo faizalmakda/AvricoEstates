@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { can, ROLE_LABELS } from '../lib/permissions'
@@ -19,15 +20,18 @@ const NAV = [
 export default function Layout({ children }) {
   const { profile, signOut, user } = useAuth()
   const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
   const items = NAV.filter((n) => n.show(profile))
 
   const handleSignOut = async () => {
+    setMenuOpen(false)
     await signOut()
     navigate('/login')
   }
 
   return (
     <div className="app-shell">
+      {/* Desktop sidebar */}
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark">🌳</span>
@@ -55,6 +59,51 @@ export default function Layout({ children }) {
           </button>
         </div>
       </aside>
+
+      {/* Mobile top bar (with account menu + sign out) */}
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark">🌳</span>
+          <span className="brand-name">Avrico Estates</span>
+        </div>
+        <button
+          className="topbar-account"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="Account menu"
+        >
+          <span className="avatar">{(profile?.full_name || user?.email || '?').charAt(0).toUpperCase()}</span>
+        </button>
+      </header>
+
+      {menuOpen && (
+        <div className="sheet-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-who">
+              <div className="who-name">{profile?.full_name ?? user?.email}</div>
+              <div className={`role-pill role-${profile?.role}`}>
+                {ROLE_LABELS[profile?.role] ?? 'User'}
+              </div>
+            </div>
+            <nav className="sheet-nav">
+              {items.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.end}
+                  className="sheet-link"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="nav-icon">{n.icon}</span>
+                  <span>{n.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+            <button className="btn btn-danger btn-block" onClick={handleSignOut}>
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="content">
         {isDemo && (
