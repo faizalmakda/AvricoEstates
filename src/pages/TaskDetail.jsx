@@ -43,6 +43,13 @@ export default function TaskDetail() {
 
   const overdue = isOverdue(task)
 
+  const deleteSubmission = async (s) => {
+    if (!confirm('Delete this task update? This cannot be undone.')) return
+    const { error } = await supabase.from('task_submissions').delete().eq('id', s.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
   const deleteTask = async () => {
     if (!confirm('Delete this task permanently?')) return
     const { error } = await supabase.from('tasks').delete().eq('id', id)
@@ -119,6 +126,9 @@ export default function TaskDetail() {
                       {new Date(s.created_at).toLocaleString()}
                     </span>
                   </div>
+                  {(owner || s.submitted_by === user.id) && (
+                    <button className="link danger" onClick={() => deleteSubmission(s)}>Delete this update</button>
+                  )}
                   {s.note && <p>{s.note}</p>}
                   {s.photo_path && (
                     <a href={evidenceUrl(s.photo_path)} target="_blank" rel="noreferrer">
