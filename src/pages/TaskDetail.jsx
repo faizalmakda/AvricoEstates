@@ -4,6 +4,7 @@ import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner, isManager } from '../lib/permissions'
 import { fetchNameMap, nameOf } from '../lib/people'
+import { isOverdue, taskStatusColor as statusColor } from './Tasks'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
@@ -19,7 +20,7 @@ export default function TaskDetail() {
 
   const load = async () => {
     const [{ data: t }, { data: subs }, nameMap] = await Promise.all([
-      supabase.from('tasks').select('*').eq('id', id).single(),
+      supabase.from('tasks').select('*, zone:zone_id(code), tree:tree_id(code), item:inventory_item_id(name)').eq('id', id).single(),
       supabase
         .from('task_submissions')
         .select('*')
@@ -40,6 +41,8 @@ export default function TaskDetail() {
   if (loading) return <Spinner />
   if (!task) return <Banner kind="error">Task not found, or you don't have access to it.</Banner>
 
+  const overdue = isOverdue(task)
+
   const deleteTask = async () => {
     if (!confirm('Delete this task permanently?')) return
     const { error } = await supabase.from('tasks').delete().eq('id', id)
@@ -54,15 +57,19 @@ export default function TaskDetail() {
       <Card>
         <div className="card-head">
           <h1>{task.title}</h1>
-          <Badge color={task.status === 'Completed' ? '#2e7d32' : '#1565c0'}>
-            {task.status}
-          </Badge>
+          <div className="task-side">
+            {overdue && <Badge color="#b5392b">Overdue</Badge>}
+            <Badge color={statusColor(task.status)}>{task.status}</Badge>
+          </div>
         </div>
         <div className="meta-grid">
           <Meta label="Assigned to" value={task.assigned_to ? nameOf(names, task.assigned_to) : 'Unassigned'} />
           <Meta label="Priority" value={task.priority} />
           <Meta label="Due" value={task.due_date || '—'} />
         </div>
+        {(task.zone?.code || task.tree?.code || task.item?.name) && (
+          <p className="muted small">🔗 Linked: {[task.zone?.code && `Zone ${task.zone.code}`, task.tree?.code, task.item?.name].filter(Boolean).join(' · ')}</p>
+        )}
         {task.instructions && (
           <>
             <h3 className="section-label">Instructions</h3>
@@ -70,12 +77,22 @@ export default function TaskDetail() {
           </>
         )}
 
-        {/* Owners can edit/delete; the manager cannot. */}
+        {/* Owners can edit/delete and set status; the manager cannot. */}
         {owner && (
-          <div className="detail-actions">
-            <EditTaskButton task={task} onSaved={load} />
-            <Button variant="danger" onClick={deleteTask}>Delete task</Button>
-          </div>
+          <>
+            <div className="detail-actions">
+              <EditTaskButton task={task} onSaved={load} />
+              <Button variant="danger" onClick={deleteTask}>Delete task</Button>
+            </div>
+            <Field label="Set status">
+              <select value={task.status} onChange={async (e) => {
+                const { error } = await supabase.from('tasks').update({ status: e.target.value, updated_at: new Date().toISOString() }).eq('id', task.id)
+                if (error) alert(error.message); else load()
+              }}>
+                {['Pending', 'In Progress', 'Completed', 'Cancelled'].map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </Field>
+          </>
         )}
       </Card>
 

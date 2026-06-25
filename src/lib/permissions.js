@@ -61,6 +61,12 @@ export const can = {
   manageProduce: isStaff,
   manageYield: isStaff,
 
+  // Inventory purchase requests
+  viewRequests: isFieldUser,     // owner/manager/worker (not viewer)
+  createRequest: isFieldUser,    // managers & workers raise requests
+  approveRequest: isOwner,       // owners approve / reject
+  purchaseRequest: isOwner,      // owners mark purchased -> into stock
+
   // Admin
   manageUsers: isOwner,
   viewReports: () => true, // everyone, including viewers

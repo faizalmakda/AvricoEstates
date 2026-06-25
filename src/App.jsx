@@ -13,6 +13,7 @@ import Zones from './pages/Zones'
 import TreeRegister from './pages/TreeRegister'
 import TreeDetail from './pages/TreeDetail'
 import Inventory from './pages/Inventory'
+import Requests from './pages/Requests'
 import Produce from './pages/Produce'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
@@ -45,8 +46,9 @@ export default function App() {
       <Route path="/trees" element={<Protected><TreeRegister /></Protected>} />
       <Route path="/trees/:id" element={<Protected><TreeDetail /></Protected>} />
       <Route path="/inventory" element={<Protected><Inventory /></Protected>} />
+      <Route path="/requests" element={<Protected><Requests /></Protected>} />
       <Route path="/produce" element={<Protected><Produce /></Protected>} />
-      <Route path="/reports" element={<Protected ownerOnly><Reports /></Protected>} />
+      <Route path="/reports" element={<Protected><Reports /></Protected>} />
       <Route path="/users" element={<Protected ownerOnly><Users /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

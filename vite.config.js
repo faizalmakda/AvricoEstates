@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.jpg', 'favicon.svg'],
+      includeAssets: ['logo.jpg', 'logo-mark.png', 'favicon.svg'],
       manifest: {
         name: 'Avrico Estates',
         short_name: 'Avrico',
@@ -22,9 +22,9 @@ export default defineConfig({
         start_url: './',
         scope: './',
         icons: [
-          { src: 'logo.jpg', sizes: '192x192', type: 'image/jpeg' },
-          { src: 'logo.jpg', sizes: '512x512', type: 'image/jpeg' },
-          { src: 'logo.jpg', sizes: '512x512', type: 'image/jpeg', purpose: 'any maskable' }
+          { src: 'logo-mark.png', sizes: '192x192', type: 'image/png' },
+          { src: 'logo-mark.png', sizes: '512x512', type: 'image/png' },
+          { src: 'logo-mark.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
         ]
       }
     })

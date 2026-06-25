@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
-import logo from '../assets/logo.jpg'
+import logoMark from '../assets/logo-mark.png'
 
 // Navigation items. `show` decides visibility based on the user's role.
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
   { to: '/trees', label: 'Trees', icon: '🌳', show: () => true },
   { to: '/tasks', label: 'Tasks', icon: '✅', show: () => true },
   { to: '/inventory', label: 'Inventory', icon: '📦', show: () => true },
+  { to: '/requests', label: 'Requests', icon: '🧾', show: (p) => can.viewRequests(p) },
   { to: '/produce', label: 'Yield', icon: '🧺', show: () => true },
   { to: '/reports', label: 'Reports', icon: '📊', show: (p) => can.viewReports(p) },
   { to: '/users', label: 'Users', icon: '👥', show: (p) => can.manageUsers(p) },
@@ -35,7 +36,7 @@ export default function Layout({ children }) {
       {/* Desktop sidebar */}
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-logo" style={{ backgroundImage: `url(${logo})` }} />
+          <span className="brand-logo" style={{ backgroundImage: `url(${logoMark})` }} />
           <span className="brand-name">Avrico Estates</span>
         </div>
 
@@ -64,7 +65,7 @@ export default function Layout({ children }) {
       {/* Mobile top bar (with account menu + sign out) */}
       <header className="topbar">
         <div className="brand">
-          <span className="brand-logo" style={{ backgroundImage: `url(${logo})` }} />
+          <span className="brand-logo" style={{ backgroundImage: `url(${logoMark})` }} />
           <span className="brand-name">Avrico Estates</span>
         </div>
         <button

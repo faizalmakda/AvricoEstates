@@ -47,9 +47,9 @@ a { color: inherit; }
 
 /* Circular logo badge that frames the emblem (crops the wordmark) for nav bars. */
 .brand-logo {
-  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
   background-color: #fff; background-repeat: no-repeat;
-  background-position: center 30%; background-size: 150%;
+  background-position: center; background-size: cover;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
 }
 /* Full logo (with wordmark) for the login / setup screens. */
@@ -167,6 +167,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .table tr:last-child td { border-bottom: none; }
 .row-actions { display: flex; gap: 12px; white-space: nowrap; flex-wrap: wrap; }
 .stock-num { font-weight: 700; font-size: 1.05rem; }
+
+/* Inventory requests */
+.req-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.req-row:last-child { border-bottom: none; }
+.req-title { font-weight: 600; }
+.req-side { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---------- Detail / timeline ---------- */
 .detail { max-width: 720px; }
