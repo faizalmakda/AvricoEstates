@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner, isManager } from '../lib/permissions'
+import { fetchNameMap, nameOf } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
@@ -13,19 +14,22 @@ export default function TaskDetail() {
   const owner = isOwner(profile)
   const [task, setTask] = useState(null)
   const [submissions, setSubmissions] = useState([])
+  const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
-    const [{ data: t }, { data: subs }] = await Promise.all([
-      supabase.from('tasks').select('*, assignee:assigned_to(full_name)').eq('id', id).single(),
+    const [{ data: t }, { data: subs }, nameMap] = await Promise.all([
+      supabase.from('tasks').select('*').eq('id', id).single(),
       supabase
         .from('task_submissions')
-        .select('*, by:submitted_by(full_name)')
+        .select('*')
         .eq('task_id', id)
         .order('created_at', { ascending: false }),
+      fetchNameMap(),
     ])
     setTask(t)
     setSubmissions(subs ?? [])
+    setNames(nameMap)
     setLoading(false)
   }
 
@@ -55,7 +59,7 @@ export default function TaskDetail() {
           </Badge>
         </div>
         <div className="meta-grid">
-          <Meta label="Assigned to" value={task.assignee?.full_name || 'Unassigned'} />
+          <Meta label="Assigned to" value={task.assigned_to ? nameOf(names, task.assigned_to) : 'Unassigned'} />
           <Meta label="Priority" value={task.priority} />
           <Meta label="Due" value={task.due_date || '—'} />
         </div>
@@ -93,7 +97,7 @@ export default function TaskDetail() {
                   <div className="timeline-head">
                     <strong>{s.status}</strong>
                     <span className="muted small">
-                      {s.by?.full_name || 'Someone'} ·{' '}
+                      {nameOf(names, s.submitted_by)} ·{' '}
                       {new Date(s.created_at).toLocaleString()}
                     </span>
                   </div>

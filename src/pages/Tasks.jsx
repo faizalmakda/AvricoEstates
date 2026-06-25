@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner } from '../lib/permissions'
+import { fetchNameMap, nameOf } from '../lib/people'
 import { Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState } from '../components/ui'
 
 export default function Tasks() {
@@ -10,6 +11,7 @@ export default function Tasks() {
   const owner = isOwner(profile)
   const [tasks, setTasks] = useState([])
   const [people, setPeople] = useState([])
+  const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('Open')
   const [showNew, setShowNew] = useState(false)
@@ -17,11 +19,12 @@ export default function Tasks() {
   const load = async () => {
     setLoading(true)
     // RLS automatically limits the manager to his own tasks.
-    const { data } = await supabase
-      .from('tasks')
-      .select('*, assignee:assigned_to(full_name)')
-      .order('created_at', { ascending: false })
+    const [{ data }, nameMap] = await Promise.all([
+      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+      fetchNameMap(),
+    ])
     setTasks(data ?? [])
+    setNames(nameMap)
     setLoading(false)
   }
 
@@ -77,7 +80,7 @@ export default function Tasks() {
               <div className="task-main">
                 <div className="task-title">{t.title}</div>
                 <div className="muted small">
-                  {t.assignee?.full_name ? `For ${t.assignee.full_name}` : 'Unassigned'}
+                  {t.assigned_to ? `For ${nameOf(names, t.assigned_to)}` : 'Unassigned'}
                   {t.due_date ? ` · Due ${t.due_date}` : ''}
                 </div>
               </div>

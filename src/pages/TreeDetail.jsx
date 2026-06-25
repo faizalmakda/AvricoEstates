@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase, evidenceUrl } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
+import { fetchNameMap, nameOf } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
@@ -15,18 +16,20 @@ export default function TreeDetail() {
   const { profile, user } = useAuth()
   const [tree, setTree] = useState(null)
   const [data, setData] = useState({ inspections: [], treatments: [], photos: [], logs: [], replacements: [] })
+  const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState(params.get('tab') === 'history' ? 'History' : 'Overview')
   const [editing, setEditing] = useState(params.get('edit') === '1')
 
   const load = async () => {
-    const [{ data: t }, insp, treat, ph, logs, repl] = await Promise.all([
+    const [{ data: t }, insp, treat, ph, logs, repl, nameMap] = await Promise.all([
       supabase.from('trees').select('*, zone:zone_id(code)').eq('id', id).single(),
-      supabase.from('tree_inspections').select('*, by:inspector_id(full_name)').eq('tree_id', id).order('inspection_date', { ascending: false }),
-      supabase.from('tree_treatments').select('*, by:applied_by(full_name)').eq('tree_id', id).order('treatment_date', { ascending: false }),
-      supabase.from('tree_photos').select('*, by:uploaded_by(full_name)').eq('tree_id', id).order('created_at', { ascending: false }),
-      supabase.from('tree_logs').select('*, by:logged_by(full_name)').eq('tree_id', id).order('created_at', { ascending: false }),
-      supabase.from('tree_replacements').select('*, by:performed_by(full_name)').eq('tree_id', id).order('replaced_on', { ascending: false }),
+      supabase.from('tree_inspections').select('*').eq('tree_id', id).order('inspection_date', { ascending: false }),
+      supabase.from('tree_treatments').select('*').eq('tree_id', id).order('treatment_date', { ascending: false }),
+      supabase.from('tree_photos').select('*').eq('tree_id', id).order('created_at', { ascending: false }),
+      supabase.from('tree_logs').select('*').eq('tree_id', id).order('created_at', { ascending: false }),
+      supabase.from('tree_replacements').select('*').eq('tree_id', id).order('replaced_on', { ascending: false }),
+      fetchNameMap(),
     ])
     setTree(t)
     setData({
@@ -36,6 +39,7 @@ export default function TreeDetail() {
       logs: logs.data ?? [],
       replacements: repl.data ?? [],
     })
+    setNames(nameMap)
     setLoading(false)
   }
 
@@ -121,7 +125,7 @@ export default function TreeDetail() {
             render={(i) => ({
               title: i.status || 'Inspection',
               color: STATUS_COLORS[i.status],
-              meta: `${i.by?.full_name || 'Someone'} · ${i.inspection_date}`,
+              meta: `${nameOf(names, i.inspector_id)} · ${i.inspection_date}`,
               body: i.findings,
               photo: i.photo_path,
             })}
@@ -137,7 +141,7 @@ export default function TreeDetail() {
             items={data.treatments}
             render={(t) => ({
               title: t.product || 'Treatment',
-              meta: `${t.by?.full_name || 'Someone'} · ${t.treatment_date}`,
+              meta: `${nameOf(names, t.applied_by)} · ${t.treatment_date}`,
               body: [t.reason, t.quantity ? `${t.quantity} ${t.unit || ''}` : '', t.notes].filter(Boolean).join(' · '),
             })}
             empty="No treatments recorded yet."
@@ -176,7 +180,7 @@ export default function TreeDetail() {
                     <div className="timeline-body">
                       <div className="timeline-head">
                         <strong>Replaced</strong>
-                        <span className="muted small">{r.by?.full_name || 'Someone'} · {r.replaced_on}</span>
+                        <span className="muted small">{nameOf(names, r.performed_by)} · {r.replaced_on}</span>
                       </div>
                       {(r.reason || r.notes) && <p>{[r.reason, r.notes].filter(Boolean).join(' · ')}</p>}
                     </div>
@@ -193,7 +197,7 @@ export default function TreeDetail() {
               render={(l) => ({
                 title: l.status || 'Note',
                 color: STATUS_COLORS[l.status],
-                meta: `${l.by?.full_name || 'Someone'} · ${new Date(l.created_at).toLocaleDateString()}`,
+                meta: `${nameOf(names, l.logged_by)} · ${new Date(l.created_at).toLocaleDateString()}`,
                 body: l.note,
                 photo: l.photo_path,
               })}
