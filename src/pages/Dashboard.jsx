@@ -103,7 +103,8 @@ export default function Dashboard() {
         <Banner kind="info">🧾 {d.openReq} inventory request{d.openReq > 1 ? 's' : ''} awaiting action — <Link to="/requests" className="link">review</Link></Banner>
       )}
 
-      {/* KPI cards */}
+      {/* Orchard */}
+      <h2 className="dash-section">🌳 Orchard</h2>
       <div className="stat-grid">
         <Stat to="/orchard" icon="🌳" value={d.totalTrees} label="Trees registered" />
         <Stat to="/orchard" icon="✅" value={d.byStatus.Healthy || 0} label="Healthy" />
@@ -111,14 +112,25 @@ export default function Dashboard() {
         <Stat to="/trees?status=Diseased" icon="🦠" value={(d.byStatus.Diseased || 0) + (d.byStatus.Weak || 0)} label="Diseased / weak" tone={(d.byStatus.Diseased || d.byStatus.Weak) ? 'warn' : null} />
         <Stat to="/trees" icon="⚠️" value={attention} label="Need attention" tone={attention ? 'warn' : null} />
       </div>
+
+      {/* Tasks */}
+      <h2 className="dash-section">✅ Tasks</h2>
       <div className="stat-grid">
         <Stat to="/tasks" icon="📋" value={d.tasks.pending} label="Tasks open" />
         <Stat to="/tasks" icon="⏰" value={d.tasks.overdue} label="Overdue" tone={d.tasks.overdue ? 'warn' : null} />
         <Stat to="/tasks" icon="✔️" value={d.tasks.completed} label="Tasks completed" />
+      </div>
+
+      {/* Inventory & produce */}
+      <h2 className="dash-section">📦 Inventory &amp; produce</h2>
+      <div className="stat-grid">
         <Stat to="/inventory" icon="📦" value={d.items.length} label="Inventory items" />
+        <Stat to="/inventory" icon="⚠️" value={d.low.length} label="Low on stock" tone={d.low.length ? 'warn' : null} />
         <Stat to="/produce" icon="🧺" value={Object.values(d.storage).reduce((s, n) => s + n, 0)} label="In storage" />
       </div>
 
+      {/* Insights */}
+      <h2 className="dash-section">📊 Insights</h2>
       <div className="dash-cols">
         {/* Trees per zone */}
         <Card>

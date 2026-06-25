@@ -243,6 +243,15 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
 .zone-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 
+/* Dashboard section headings */
+.dash-section {
+  display: flex; align-items: center; gap: 8px;
+  margin: 28px 2px 12px; padding-bottom: 6px;
+  font-size: .82rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: #5a6b50; border-bottom: 1px solid var(--line);
+}
+.dash-section:first-of-type { margin-top: 14px; }
+
 /* ---------- Tree register / code ---------- */
 .mono, .mono-link { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; letter-spacing: .02em; }
 .mono-link { color: var(--green-2); text-decoration: none; }
