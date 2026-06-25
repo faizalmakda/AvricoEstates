@@ -1,0 +1,21 @@
+# Keeps the free Supabase project from going to sleep. A free project pauses
+# after ~7 days with no activity; this pings it every 2 days using the PUBLIC
+# anon key (no secret needed), which is harmless and keeps it awake.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '0 6 */2 * *' # every 2 days at 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          URL=$(grep VITE_SUPABASE_URL .env.production | cut -d= -f2)
+          KEY=$(grep VITE_SUPABASE_ANON_KEY .env.production | cut -d= -f2)
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$URL/rest/v1/zones?select=id&limit=1" -H "apikey: $KEY")
+          echo "Supabase responded: HTTP $code"

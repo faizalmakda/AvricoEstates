@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
+import { downloadBackup } from '../lib/backup'
 import { Button, PageHeader, Spinner, Modal, Field, Card, Banner } from '../components/ui'
 
 export default function Users() {
@@ -91,10 +92,46 @@ export default function Users() {
         </Card>
       )}
 
+      <BackupCard />
+
       {showNew && (
         <AddUserModal onClose={() => setShowNew(false)} onSaved={() => { setShowNew(false); load() }} />
       )}
     </div>
+  )
+}
+
+function BackupCard() {
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(null)
+
+  const run = async () => {
+    setBusy(true); setDone(null)
+    try {
+      const counts = await downloadBackup()
+      const total = Object.values(counts).reduce((s, n) => s + n, 0)
+      setDone(`Saved a backup of ${total} records to your device.`)
+    } catch (e) {
+      setDone(`Couldn't create the backup: ${e.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <h2>Data backup</h2>
+      <p className="muted small">
+        Download a complete copy of all your data (zones, trees, tasks, inventory,
+        requests, yield and more) as a single file. Keep it somewhere safe like
+        Google Drive. Your data also lives safely in the cloud — this is an extra copy
+        for peace of mind.
+      </p>
+      <div className="detail-actions">
+        <Button onClick={run} disabled={busy}>{busy ? 'Preparing…' : '⬇ Download backup'}</Button>
+      </div>
+      {done && <p className="muted small" style={{ marginTop: 8 }}>{done}</p>}
+    </Card>
   )
 }
 

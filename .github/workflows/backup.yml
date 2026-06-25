@@ -1,0 +1,29 @@
+# Nightly automated backup of all app data into a PRIVATE Supabase storage
+# bucket. Free. Also keeps the Supabase project awake (the nightly read counts
+# as activity, so the project never hits the inactivity pause).
+#
+# One-time setup (see scripts/backup.mjs / the chat notes):
+#   1. In Supabase: create a PRIVATE storage bucket named "backups".
+#   2. In GitHub repo Settings -> Secrets and variables -> Actions, add a secret
+#      named SUPABASE_SERVICE_ROLE_KEY (Supabase -> Settings -> API -> service_role).
+name: Nightly data backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 UTC daily (~04:00 Malawi)
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Read Supabase URL from .env.production
+        run: echo "SUPABASE_URL=$(grep VITE_SUPABASE_URL .env.production | cut -d= -f2)" >> "$GITHUB_ENV"
+      - name: Run backup
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/backup.mjs
