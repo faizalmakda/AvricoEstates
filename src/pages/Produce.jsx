@@ -54,6 +54,22 @@ export default function Produce() {
     return m
   }, [batches])
 
+  const deleteHarvest = async (y) => {
+    if (!confirm(`Delete this harvest (${y.quantity} ${y.unit || ''} ${y.produce_type})?\n\nAny produce already placed in storage stays in the Storage tab — remove it there if needed.`)) return
+    await supabase.from('produce_batches').update({ yield_id: null }).eq('yield_id', y.id)
+    const { error } = await supabase.from('yield_records').delete().eq('id', y.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
+  const deleteBatch = async (b) => {
+    if (!confirm(`Remove this storage batch (${b.quantity} ${b.unit || ''} ${b.produce_type})? Its movement history will also be removed.`)) return
+    await supabase.from('produce_movements').delete().eq('batch_id', b.id)
+    const { error } = await supabase.from('produce_batches').delete().eq('id', b.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
   return (
     <div>
       <PageHeader
@@ -92,7 +108,7 @@ export default function Produce() {
           {yields.length > 0 && (
             <Card className="table-card">
               <table className="table">
-                <thead><tr><th>Date</th><th>Zone</th><th>Produce</th><th>Qty</th><th>Grade</th><th>Storage</th></tr></thead>
+                <thead><tr><th>Date</th><th>Zone</th><th>Produce</th><th>Qty</th><th>Grade</th><th>Storage</th>{manage && <th></th>}</tr></thead>
                 <tbody>
                   {yields.map((y) => (
                     <tr key={y.id}>
@@ -102,6 +118,12 @@ export default function Produce() {
                       <td data-label="Qty">{y.quantity} {y.unit}</td>
                       <td data-label="Grade">{y.grade || '—'}</td>
                       <td data-label="Storage">{y.storage?.name || '—'}</td>
+                      {manage && (
+                        <td className="row-actions">
+                          <button className="link" onClick={() => setModal({ editHarvest: y })}>Edit</button>
+                          <button className="link danger" onClick={() => deleteHarvest(y)}>Delete</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -144,7 +166,13 @@ export default function Produce() {
                       <td data-label="From">{b.zone?.code || '—'}</td>
                       <td data-label="Available">{b.quantity} {b.unit}</td>
                       <td data-label="Location">{b.storage?.name || '—'}</td>
-                      {manage && <td className="row-actions"><button className="link" onClick={() => setModal({ batch: b })}>Send out</button></td>}
+                      {manage && (
+                        <td className="row-actions">
+                          <button className="link" onClick={() => setModal({ batch: b })}>Send out</button>
+                          <button className="link" onClick={() => setModal({ editBatch: b })}>Edit</button>
+                          <button className="link danger" onClick={() => deleteBatch(b)}>Delete</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -154,8 +182,8 @@ export default function Produce() {
         </>
       )}
 
-      {modal === 'harvest' && (
-        <HarvestModal zones={zones} locations={locations} userId={user.id}
+      {(modal === 'harvest' || modal?.editHarvest) && (
+        <HarvestModal record={modal?.editHarvest} zones={zones} locations={locations} userId={user.id}
           onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />
       )}
       {modal === 'location' && (
@@ -165,14 +193,25 @@ export default function Produce() {
         <SendOutModal batch={modal.batch} userId={user.id}
           onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />
       )}
+      {modal?.editBatch && (
+        <BatchModal batch={modal.editBatch} zones={zones} locations={locations}
+          onClose={() => setModal(null)} onSaved={() => { setModal(null); load() }} />
+      )}
     </div>
   )
 }
 
-function HarvestModal({ zones, locations, userId, onClose, onSaved }) {
+function HarvestModal({ record, zones, locations, userId, onClose, onSaved }) {
+  const editing = Boolean(record)
   const [f, setF] = useState({
-    zone_id: zones[0]?.id || '', produce_type: 'Avocado', quantity: '', unit: 'kg',
-    grade: '', harvest_date: new Date().toISOString().slice(0, 10), storage_location_id: '', notes: '',
+    zone_id: record?.zone_id || zones[0]?.id || '',
+    produce_type: record?.produce_type || 'Avocado',
+    quantity: record?.quantity ?? '',
+    unit: record?.unit || 'kg',
+    grade: record?.grade || '',
+    harvest_date: record?.harvest_date || new Date().toISOString().slice(0, 10),
+    storage_location_id: '',
+    notes: record?.notes || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -183,6 +222,17 @@ function HarvestModal({ zones, locations, userId, onClose, onSaved }) {
     const qty = Number(f.quantity)
     if (!qty || qty <= 0) return setError('Enter a quantity greater than 0.')
     setBusy(true); setError(null)
+
+    if (editing) {
+      const { error } = await supabase.from('yield_records').update({
+        zone_id: f.zone_id || null, produce_type: f.produce_type, quantity: qty, unit: f.unit || 'kg',
+        grade: f.grade || null, harvest_date: f.harvest_date, notes: f.notes || null,
+      }).eq('id', record.id)
+      setBusy(false)
+      if (error) setError(error.message); else onSaved()
+      return
+    }
+
     // 1) the harvest record (yield by block)
     const { data: yr, error: yErr } = await supabase.from('yield_records').insert({
       zone_id: f.zone_id || null, produce_type: f.produce_type, quantity: qty, unit: f.unit || 'kg',
@@ -203,7 +253,7 @@ function HarvestModal({ zones, locations, userId, onClose, onSaved }) {
   }
 
   return (
-    <Modal title="Record harvest" onClose={onClose}>
+    <Modal title={editing ? 'Edit harvest' : 'Record harvest'} onClose={onClose}>
       <form onSubmit={save}>
         <div className="row">
           <Field label="Zone / block">
@@ -224,17 +274,81 @@ function HarvestModal({ zones, locations, userId, onClose, onSaved }) {
           <Field label="Grade" hint="e.g. 1, 2, reject"><input value={f.grade} onChange={set('grade')} /></Field>
           <Field label="Harvest date"><input type="date" value={f.harvest_date} onChange={set('harvest_date')} /></Field>
         </div>
-        <Field label="Store in (optional)" hint="Adds it to storage so it counts as available">
-          <select value={f.storage_location_id} onChange={set('storage_location_id')}>
-            <option value="">— Don't add to storage —</option>
-            {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-        </Field>
+        {!editing && (
+          <Field label="Store in (optional)" hint="Adds it to storage so it counts as available">
+            <select value={f.storage_location_id} onChange={set('storage_location_id')}>
+              <option value="">— Don't add to storage —</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </Field>
+        )}
         <Field label="Notes"><textarea rows={2} value={f.notes} onChange={set('notes')} /></Field>
+        {editing && <p className="muted small">Editing the harvest record doesn’t change anything already in storage — manage that in the <strong>Storage</strong> tab.</p>}
         {error && <div className="banner banner-error">{error}</div>}
         <div className="modal-actions">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Record harvest'}</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Record harvest'}</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function BatchModal({ batch, zones, locations, onClose, onSaved }) {
+  const [f, setF] = useState({
+    produce_type: batch.produce_type || '', grade: batch.grade || '',
+    quantity: batch.quantity ?? '', unit: batch.unit || 'kg',
+    zone_id: batch.zone_id || '', storage_location_id: batch.storage_location_id || '',
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+
+  const save = async (e) => {
+    e.preventDefault()
+    const qty = Number(f.quantity)
+    if (qty < 0) return setError('Quantity cannot be negative.')
+    setBusy(true); setError(null)
+    const { error } = await supabase.from('produce_batches').update({
+      produce_type: f.produce_type, grade: f.grade || null, quantity: qty, unit: f.unit || 'kg',
+      zone_id: f.zone_id || null, storage_location_id: f.storage_location_id || null,
+    }).eq('id', batch.id)
+    setBusy(false)
+    if (error) setError(error.message); else onSaved()
+  }
+
+  return (
+    <Modal title="Edit storage batch" onClose={onClose}>
+      <form onSubmit={save}>
+        <div className="row">
+          <Field label="Produce">
+            <input list="ptypes" value={f.produce_type} onChange={set('produce_type')} required />
+            <datalist id="ptypes">{PRODUCE_TYPES.map((p) => <option key={p} value={p} />)}</datalist>
+          </Field>
+          <Field label="Grade"><input value={f.grade} onChange={set('grade')} /></Field>
+        </div>
+        <div className="row">
+          <Field label="Quantity available"><input type="number" step="any" min="0" value={f.quantity} onChange={set('quantity')} required /></Field>
+          <Field label="Unit"><input value={f.unit} onChange={set('unit')} /></Field>
+        </div>
+        <div className="row">
+          <Field label="From zone">
+            <select value={f.zone_id} onChange={set('zone_id')}>
+              <option value="">— None —</option>
+              {zones.map((z) => <option key={z.id} value={z.id}>{z.code}</option>)}
+            </select>
+          </Field>
+          <Field label="Location">
+            <select value={f.storage_location_id} onChange={set('storage_location_id')}>
+              <option value="">— None —</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        {error && <div className="banner banner-error">{error}</div>}
+        <div className="modal-actions">
+          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>
         </div>
       </form>
     </Modal>
