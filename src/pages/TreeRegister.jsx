@@ -64,6 +64,13 @@ export default function TreeRegister() {
         action={can.registerTree(profile) && <Button onClick={() => setShowAdd(true)}>+ Add tree</Button>}
       />
 
+      {!loading && zones.length === 0 && (
+        <Banner kind="info">
+          ⚙️ <strong>One step to finish setup:</strong> run <code>supabase/schema_v2.sql</code> in
+          your Supabase SQL Editor to activate the orchard zones and tree register.
+        </Banner>
+      )}
+
       <div className="toolbar">
         <input
           className="search"
