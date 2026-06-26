@@ -18,6 +18,7 @@ import Requests from './pages/Requests'
 import Produce from './pages/Produce'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
+import Activity from './pages/Activity'
 
 // Wrap a page so only signed-in users (optionally owners) can see it.
 function Protected({ children, ownerOnly = false }) {
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/requests" element={<Protected><Requests /></Protected>} />
       <Route path="/produce" element={<Protected><Produce /></Protected>} />
       <Route path="/reports" element={<Protected><Reports /></Protected>} />
+      <Route path="/activity" element={<Protected ownerOnly><Activity /></Protected>} />
       <Route path="/users" element={<Protected ownerOnly><Users /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

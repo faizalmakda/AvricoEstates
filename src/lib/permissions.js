@@ -71,6 +71,7 @@ export const can = {
   manageUsers: isOwner,
   viewReports: () => true, // everyone, including viewers
   viewEvidence: isStaff,
+  viewAudit: isOwner,      // activity / audit log
 }
 
 // Tree status options.

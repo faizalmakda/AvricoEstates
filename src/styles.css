@@ -260,6 +260,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
   display: inline-flex; align-items: center; justify-content: center;
 }
 .tab { position: relative; }
+.diff-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .tab-badge {
   position: absolute; top: 2px; left: 50%; transform: translateX(6px);
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
