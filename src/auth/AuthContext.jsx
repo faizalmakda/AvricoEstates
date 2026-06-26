@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase, isConfigured } from '../supabaseClient'
+import { cachedSelect } from '../lib/cache'
 
 const AuthContext = createContext(null)
 
@@ -11,11 +12,9 @@ export function AuthProvider({ children }) {
 
   const loadProfile = useCallback(async (userId) => {
     if (!userId) return setProfile(null)
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    // Cached so the app works (and knows your role) offline.
+    const { data } = await cachedSelect(`profile:${userId}`,
+      supabase.from('profiles').select('*').eq('id', userId).single())
     setProfile(data ?? null)
   }, [])
 
@@ -25,23 +24,30 @@ export function AuthProvider({ children }) {
       return
     }
     let active = true
+    const done = () => { if (active) setLoading(false) }
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    // Read the stored session, then load the profile in the BACKGROUND — never
+    // block the app on the network, so it opens instantly even with no signal.
+    supabase.auth.getSession().then(({ data }) => {
       if (!active) return
       setSession(data.session)
-      await loadProfile(data.session?.user?.id)
-      setLoading(false)
-    })
+      loadProfile(data.session?.user?.id)
+    }).catch(() => {}).finally(done)
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
       // User arrived from a "forgot password" email — show the reset screen.
       if (event === 'PASSWORD_RECOVERY') setRecovery(true)
       setSession(sess)
-      await loadProfile(sess?.user?.id)
+      loadProfile(sess?.user?.id)
+      done()
     })
+
+    // Hard safety net: never get stuck on the loading screen.
+    const fallback = setTimeout(done, 3000)
 
     return () => {
       active = false
+      clearTimeout(fallback)
       sub.subscription.unsubscribe()
     }
   }, [loadProfile])
