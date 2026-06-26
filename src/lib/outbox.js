@@ -47,30 +47,44 @@ export function isOfflineError(e) {
   return !navigator.onLine || /failed to fetch|networkerror|load failed|network request failed/i.test(e?.message || '')
 }
 
-// Build + store an op when (and only when) the failure was a connectivity one.
-// `photo` is { file, folder, field } using the RAW camera file — we compress
-// it here so only a small blob is kept on the device.
-export async function queueIfOffline(error, { table, row, after, photo }) {
-  if (!isOfflineError(error)) return false
+// Store an op to replay later. `op` is 'insert' (default) or 'update'.
+// `photo` is { file, folder, field } using the RAW camera file — we compress it
+// here so only a small blob is kept on the device.
+export async function enqueue({ op = 'insert', table, row, match, patch, after, photo }) {
   let storedPhoto = null
   if (photo?.file) {
     const small = await compressImage(photo.file).catch(() => photo.file)
     storedPhoto = { file: small, folder: photo.folder, field: photo.field }
   }
-  const op = { id: crypto.randomUUID(), createdAt: Date.now(), attempts: 0, table, row, after, photo: storedPhoto }
-  await putOp(op)
+  const item = { id: crypto.randomUUID(), createdAt: Date.now(), attempts: 0, op, table, row, match, patch, after, photo: storedPhoto }
+  await putOp(item)
   await refresh()
   processOutbox()
+  return item.id
+}
+
+// Convenience: only queue if the failure was a connectivity one.
+export async function queueIfOffline(error, spec) {
+  if (!isOfflineError(error)) return false
+  await enqueue(spec)
   return true
 }
 
 async function executeOp(op) {
-  const row = { ...op.row }
-  if (op.photo?.file) {
-    row[op.photo.field] = await uploadPhoto(op.photo.file, op.photo.folder)
+  let photoPath = null
+  if (op.photo?.file) photoPath = await uploadPhoto(op.photo.file, op.photo.folder)
+
+  if (op.op === 'update') {
+    const patch = { ...op.patch }
+    if (photoPath) patch[op.photo.field] = photoPath
+    const { error } = await supabase.from(op.table).update(patch).match(op.match)
+    if (error) throw error
+  } else {
+    const row = { ...op.row }
+    if (photoPath) row[op.photo.field] = photoPath
+    const { error } = await supabase.from(op.table).insert(row)
+    if (error) throw error
   }
-  const { error } = await supabase.from(op.table).insert(row)
-  if (error) throw error
   if (op.after) {
     await supabase.from(op.after.table).update(op.after.patch).match(op.after.match)
   }

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
+import { enqueue, isOfflineError } from '../lib/outbox'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
 } from '../components/ui'
@@ -151,6 +152,7 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
   const [photo, setPhoto] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [queued, setQueued] = useState(false)
   const [duplicate, setDuplicate] = useState(null) // existing tree row if found
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
@@ -163,29 +165,8 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     if (!zone) return setError('Please choose a zone.')
     if (!isValidPositions(form.row, form.tree)) return setError('Row and tree number must be 1 or higher.')
 
-    setBusy(true)
-    // 1) Duplicate check — never create two trees at the same position.
-    const { data: existing } = await supabase
-      .from('trees')
-      .select('*')
-      .eq('code', code)
-      .maybeSingle()
-
-    if (existing) {
-      if (existing.archived || existing.deleted_at) {
-        // A previously-removed tree still occupies this position — clear it out
-        // completely, then create a fresh one below.
-        const { error: delErr } = await supabase.rpc('delete_tree_cascade', { _tree_id: existing.id })
-        if (delErr) { setBusy(false); return setError(delErr.message) }
-      } else {
-        setBusy(false)
-        setDuplicate(existing) // genuinely active tree — show the "already exists" dialog
-        return
-      }
-    }
-
-    // 2) Create the new tree.
-    const { data: created, error: insErr } = await supabase.from('trees').insert({
+    setBusy(true); setQueued(false)
+    const treeRow = {
       code,
       zone_id: zone.id,
       row_number: Number(form.row),
@@ -196,24 +177,55 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
       status: form.status,
       notes: form.notes || null,
       created_by: user.id,
-    }).select('id').single()
+    }
 
-    if (insErr) { setBusy(false); return setError(insErr.message) }
+    try {
+      // 1) Duplicate check — never create two trees at the same position.
+      const { data: existing, error: dupErr } = await supabase
+        .from('trees').select('*').eq('code', code).maybeSingle()
+      if (dupErr) throw dupErr
 
-    // 3) Optional first photo for the tree's history.
-    if (photo && created) {
-      try {
+      if (existing) {
+        if (existing.archived || existing.deleted_at) {
+          const { error: delErr } = await supabase.rpc('delete_tree_cascade', { _tree_id: existing.id })
+          if (delErr) throw delErr
+        } else {
+          setBusy(false)
+          setDuplicate(existing) // genuinely active tree — show the "already exists" dialog
+          return
+        }
+      }
+
+      // 2) Create the new tree.
+      const { data: created, error: insErr } = await supabase.from('trees').insert(treeRow).select('id').single()
+      if (insErr) throw insErr
+
+      // 3) Optional first photo for the tree's history.
+      if (photo && created) {
         const path = await uploadPhoto(photo, `trees/${created.id}/photos`)
         await supabase.from('tree_photos').insert({
           tree_id: created.id, photo_path: path, caption: 'Registration photo', uploaded_by: user.id,
         })
-      } catch (err) {
-        setBusy(false)
-        return setError(`Tree saved, but the photo failed to upload: ${err.message}`)
+      }
+      setBusy(false)
+      onSaved()
+    } catch (err) {
+      // No signal? Queue the registration (and photo) to sync later.
+      if (isOfflineError(err)) {
+        const treeId = crypto.randomUUID()
+        await enqueue({ table: 'trees', row: { id: treeId, ...treeRow } })
+        if (photo) {
+          await enqueue({
+            table: 'tree_photos',
+            row: { tree_id: treeId, caption: 'Registration photo', uploaded_by: user.id },
+            photo: { file: photo, folder: `trees/${treeId}/photos`, field: 'photo_path' },
+          })
+        }
+        setBusy(false); setQueued(true)
+      } else {
+        setBusy(false); setError(err.message)
       }
     }
-    setBusy(false)
-    onSaved()
   }
 
   // The duplicate dialog (matches the required logic exactly).
@@ -234,6 +246,20 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
             Update existing record
           </Button>
         </div>
+      </Modal>
+    )
+  }
+
+  if (queued) {
+    return (
+      <Modal title="Saved offline" onClose={onClose}>
+        <Banner kind="info">
+          📴 Tree <strong>{code}</strong> saved on your phone. It will be registered automatically when you have signal.
+        </Banner>
+        <p className="muted small">
+          Note: the duplicate check runs when it syncs — if that position was taken while you were offline, it'll be flagged in the sync bar.
+        </p>
+        <div className="modal-actions"><Button onClick={onClose}>Done</Button></div>
       </Modal>
     )
   }

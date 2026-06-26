@@ -445,16 +445,23 @@ function ReplaceButton({ tree, userId, onDone }) {
 function EditTree({ tree, onDone, onCancel }) {
   const [f, setF] = useState(tree)
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const save = async (e) => {
-    e.preventDefault(); setBusy(true)
-    const { error } = await supabase.from('trees').update({
+    e.preventDefault(); setBusy(true); setQueued(false)
+    const patch = {
       species: f.species, location: f.location, planted_on: f.planted_on || null,
-      status: f.status, notes: f.notes, updated_at: new Date().toISOString(),
-    }).eq('id', tree.id)
-    setBusy(false)
-    if (error) alert(error.message)
-    else onDone()
+      status: f.status, notes: f.notes,
+    }
+    try {
+      const { error } = await supabase.from('trees').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', tree.id)
+      if (error) throw error
+      onDone()
+    } catch (e) {
+      const offline = await queueIfOffline(e, { op: 'update', table: 'trees', match: { id: tree.id }, patch })
+      if (offline) setQueued(true)
+      else alert(e.message)
+    } finally { setBusy(false) }
   }
   return (
     <form onSubmit={save} className="inline-edit">
@@ -468,8 +475,9 @@ function EditTree({ tree, onDone, onCancel }) {
       <Field label="Location"><input value={f.location || ''} onChange={set('location')} /></Field>
       <Field label="Planted on"><input type="date" value={f.planted_on || ''} onChange={set('planted_on')} /></Field>
       <Field label="Notes"><textarea rows={2} value={f.notes || ''} onChange={set('notes')} /></Field>
+      {queued && <div className="banner banner-info">📴 Saved on your phone — changes will sync when you have signal.</div>}
       <div className="modal-actions">
-        <Button variant="ghost" type="button" onClick={onCancel}>Cancel</Button>
+        <Button variant="ghost" type="button" onClick={onCancel}>{queued ? 'Close' : 'Cancel'}</Button>
         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</Button>
       </div>
     </form>
