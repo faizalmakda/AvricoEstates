@@ -7,6 +7,7 @@ import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { isOverdue, taskStatusColor as statusColor } from './Tasks'
 import { uploadPhoto } from '../lib/upload'
 import { queueIfOffline } from '../lib/outbox'
+import { cachedSelect } from '../lib/cache'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
 export default function TaskDetail() {
@@ -21,12 +22,12 @@ export default function TaskDetail() {
 
   const load = async () => {
     const [{ data: t }, { data: subs }, nameMap] = await Promise.all([
-      supabase.from('tasks').select('*, zone:zone_id(code), tree:tree_id(code), item:inventory_item_id(name)').eq('id', id).single(),
-      supabase
+      cachedSelect(`task:${id}`, supabase.from('tasks').select('*, zone:zone_id(code), tree:tree_id(code), item:inventory_item_id(name)').eq('id', id).single()),
+      cachedSelect(`task-subs:${id}`, supabase
         .from('task_submissions')
         .select('*')
         .eq('task_id', id)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })),
       fetchNameMap(),
     ])
     setTask(t)

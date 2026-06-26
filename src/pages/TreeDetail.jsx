@@ -6,6 +6,7 @@ import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
 import { queueIfOffline } from '../lib/outbox'
+import { cachedSelect } from '../lib/cache'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
 const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
@@ -24,12 +25,12 @@ export default function TreeDetail() {
 
   const load = async () => {
     const [{ data: t }, insp, treat, ph, logs, repl, nameMap] = await Promise.all([
-      supabase.from('trees').select('*, zone:zone_id(code)').eq('id', id).single(),
-      supabase.from('tree_inspections').select('*').eq('tree_id', id).order('inspection_date', { ascending: false }),
-      supabase.from('tree_treatments').select('*').eq('tree_id', id).order('treatment_date', { ascending: false }),
-      supabase.from('tree_photos').select('*').eq('tree_id', id).order('created_at', { ascending: false }),
-      supabase.from('tree_logs').select('*').eq('tree_id', id).order('created_at', { ascending: false }),
-      supabase.from('tree_replacements').select('*').eq('tree_id', id).order('replaced_on', { ascending: false }),
+      cachedSelect(`tree:${id}`, supabase.from('trees').select('*, zone:zone_id(code)').eq('id', id).single()),
+      cachedSelect(`tree-insp:${id}`, supabase.from('tree_inspections').select('*').eq('tree_id', id).order('inspection_date', { ascending: false })),
+      cachedSelect(`tree-treat:${id}`, supabase.from('tree_treatments').select('*').eq('tree_id', id).order('treatment_date', { ascending: false })),
+      cachedSelect(`tree-photos:${id}`, supabase.from('tree_photos').select('*').eq('tree_id', id).order('created_at', { ascending: false })),
+      cachedSelect(`tree-logs:${id}`, supabase.from('tree_logs').select('*').eq('tree_id', id).order('created_at', { ascending: false })),
+      cachedSelect(`tree-repl:${id}`, supabase.from('tree_replacements').select('*').eq('tree_id', id).order('replaced_on', { ascending: false })),
       fetchNameMap(),
     ])
     setTree(t)

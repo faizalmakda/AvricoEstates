@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, isOwner } from '../lib/permissions'
 import { fetchNameMap, nameOf } from '../lib/people'
+import { cachedSelect } from '../lib/cache'
 import { useNotifications } from '../notifications/NotificationsContext'
 import { Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState } from '../components/ui'
 
@@ -33,11 +34,11 @@ export default function Tasks() {
     setLoading(true)
     // RLS automatically limits the manager to his own tasks.
     const [{ data }, { data: z }, { data: it }, nameMap] = await Promise.all([
-      supabase.from('tasks')
+      cachedSelect(`tasks:${profile?.id}`, supabase.from('tasks')
         .select('*, zone:zone_id(code), tree:tree_id(code), item:inventory_item_id(name)')
-        .order('created_at', { ascending: false }),
-      supabase.from('zones').select('id,code').order('code'),
-      supabase.from('inventory').select('id,name').order('name'),
+        .order('created_at', { ascending: false })),
+      cachedSelect('zones', supabase.from('zones').select('id,code').order('code')),
+      cachedSelect('inventory-min', supabase.from('inventory').select('id,name').order('name')),
       fetchNameMap(),
     ])
     setTasks(data ?? [])

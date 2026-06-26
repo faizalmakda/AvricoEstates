@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../auth/AuthContext'
 import { can, STATUS_COLORS } from '../lib/permissions'
+import { cachedSelect } from '../lib/cache'
 import { Card, PageHeader, Spinner, Badge, EmptyState, Button, Modal, Field } from '../components/ui'
 
 export default function Zones() {
@@ -16,8 +17,8 @@ export default function Zones() {
   const load = async () => {
     setLoading(true)
     const [{ data: z }, { data: t }] = await Promise.all([
-      supabase.from('zones').select('*').order('code'),
-      supabase.from('trees').select('id,zone_id,status,archived,deleted_at').eq('archived', false),
+      cachedSelect('zones-full', supabase.from('zones').select('*').order('code')),
+      cachedSelect('trees-min', supabase.from('trees').select('id,zone_id,status,archived,deleted_at').eq('archived', false)),
     ])
     setZones(z ?? [])
     setTrees((t ?? []).filter((x) => !x.deleted_at))

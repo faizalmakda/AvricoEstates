@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient'
+import { cachedSelect } from './cache'
 
 // Build a { userId: full_name } lookup from profiles.
 //
@@ -7,7 +8,7 @@ import { supabase } from '../supabaseClient'
 // not expose for embedding). Reading from the public `profiles` table is both
 // reliable and respects Row Level Security.
 export async function fetchNameMap() {
-  const { data } = await supabase.from('profiles').select('id, full_name')
+  const { data } = await cachedSelect('names', supabase.from('profiles').select('id, full_name'))
   const map = {}
   ;(data || []).forEach((p) => { map[p.id] = p.full_name })
   return map

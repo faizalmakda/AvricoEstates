@@ -11,6 +11,21 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.jpg', 'logo-mark.png', 'favicon.svg'],
+      workbox: {
+        navigateFallback: 'index.html',
+        // Cache photos you've already viewed so they still show offline.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/storage/v1/object/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'evidence-photos',
+              expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Avrico Estates',
         short_name: 'Avrico',
