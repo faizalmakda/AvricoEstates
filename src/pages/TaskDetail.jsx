@@ -6,6 +6,7 @@ import { can, isOwner, isManager } from '../lib/permissions'
 import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { isOverdue, taskStatusColor as statusColor } from './Tasks'
 import { uploadPhoto } from '../lib/upload'
+import { queueIfOffline } from '../lib/outbox'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
 export default function TaskDetail() {
@@ -160,31 +161,27 @@ function CompleteForm({ taskId, userId, onDone }) {
   const [status, setStatus] = useState('Completed')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [queued, setQueued] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
-    setBusy(true)
-    setError(null)
+    setBusy(true); setError(null); setQueued(false)
+    const row = { task_id: taskId, status, note: note || null, submitted_by: userId }
     try {
       let photo_path = null
       if (file) photo_path = await uploadPhoto(file, `tasks/${taskId}`)
-      // A NEW append-only submission row — it never overwrites the task.
-      const { error } = await supabase.from('task_submissions').insert({
-        task_id: taskId,
-        status,
-        note: note || null,
-        photo_path,
-        submitted_by: userId,
-      })
+      const { error } = await supabase.from('task_submissions').insert({ ...row, photo_path })
       if (error) throw error
-      setNote('')
-      setFile(null)
-      onDone()
+      setNote(''); setFile(null); onDone()
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
+      // No signal? Save it on the phone and sync later.
+      const offline = await queueIfOffline(err, {
+        table: 'task_submissions', row,
+        photo: file ? { file, folder: `tasks/${taskId}`, field: 'photo_path' } : null,
+      })
+      if (offline) { setNote(''); setFile(null); setQueued(true) }
+      else setError(err.message)
+    } finally { setBusy(false) }
   }
 
   return (
@@ -209,6 +206,7 @@ function CompleteForm({ taskId, userId, onDone }) {
           />
         </Field>
         {error && <div className="banner banner-error">{error}</div>}
+        {queued && <div className="banner banner-info">📴 Saved on your phone — it will upload automatically when you have signal.</div>}
         <Button type="submit" disabled={busy}>
           {busy ? 'Submitting…' : 'Submit update'}
         </Button>

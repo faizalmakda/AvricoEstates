@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useNotifications } from '../notifications/NotificationsContext'
@@ -6,6 +6,7 @@ import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
 import { Button, Modal, Field } from './ui'
+import { subscribe, getStatus, processOutbox } from '../lib/outbox'
 import logoMark from '../assets/logo-mark.png'
 
 // Navigation items. `show` decides visibility based on the user's role.
@@ -122,6 +123,7 @@ export default function Layout({ children }) {
       {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} />}
 
       <main className="content">
+        <SyncIndicator />
         {isDemo && (
           <div className="demo-ribbon">
             🧪 Demo mode — sample data stored only in this browser.
@@ -151,6 +153,23 @@ export default function Layout({ children }) {
           </NavLink>
         ))}
       </nav>
+    </div>
+  )
+}
+
+function SyncIndicator() {
+  const [s, setS] = useState(getStatus())
+  useEffect(() => subscribe(setS), [])
+  if (!s.pending && !s.failed) return null
+  return (
+    <div className="sync-ribbon">
+      {s.syncing
+        ? `⏳ Syncing ${s.pending} saved item${s.pending === 1 ? '' : 's'}…`
+        : `📴 ${s.pending} item${s.pending === 1 ? '' : 's'} waiting to upload`}
+      {s.failed > 0 && ` · ${s.failed} failed`}
+      {!s.syncing && navigator.onLine && (
+        <button className="link" onClick={() => processOutbox()}>Sync now</button>
+      )}
     </div>
   )
 }

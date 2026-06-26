@@ -261,6 +261,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 }
 .tab { position: relative; }
 .diff-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.sync-ribbon { background: #fff4e0; border: 1px solid #f0d9a8; color: #7a5b18; border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; font-size: .9rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tab-badge {
   position: absolute; top: 2px; left: 50%; transform: translateX(6px);
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;

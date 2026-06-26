@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
+import { queueIfOffline } from '../lib/outbox'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
 
 const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
@@ -260,20 +261,26 @@ function AddInspection({ treeId, userId, onDone }) {
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  const [queued, setQueued] = useState(false)
   const submit = async (e) => {
-    e.preventDefault(); setBusy(true); setErr(null)
+    e.preventDefault(); setBusy(true); setErr(null); setQueued(false)
+    const row = { tree_id: treeId, inspection_date: f.date, status: f.status, findings: f.findings || null, inspector_id: userId }
+    const after = { table: 'trees', match: { id: treeId }, patch: { status: f.status, last_inspection_on: f.date } }
     try {
       let photo_path = null
       if (file) photo_path = await uploadPhoto(file, `trees/${treeId}/inspections`)
-      const { error } = await supabase.from('tree_inspections').insert({
-        tree_id: treeId, inspection_date: f.date, status: f.status, findings: f.findings || null,
-        photo_path, inspector_id: userId,
-      })
+      const { error } = await supabase.from('tree_inspections').insert({ ...row, photo_path })
       if (error) throw error
-      // Reflect the inspection on the tree headline.
-      await supabase.from('trees').update({ status: f.status, last_inspection_on: f.date }).eq('id', treeId)
+      await supabase.from('trees').update(after.patch).eq('id', treeId)
       setF({ ...f, findings: '' }); setFile(null); onDone()
-    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+    } catch (e) {
+      const offline = await queueIfOffline(e, {
+        table: 'tree_inspections', row, after,
+        photo: file ? { file, folder: `trees/${treeId}/inspections`, field: 'photo_path' } : null,
+      })
+      if (offline) { setF({ ...f, findings: '' }); setFile(null); setQueued(true) }
+      else setErr(e.message)
+    } finally { setBusy(false) }
   }
   return (
     <Card className="complete-card">
@@ -290,6 +297,7 @@ function AddInspection({ treeId, userId, onDone }) {
         <Field label="Findings"><textarea rows={2} value={f.findings} onChange={(e) => setF({ ...f, findings: e.target.value })} /></Field>
         <Field label="Photo"><input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
         {err && <div className="banner banner-error">{err}</div>}
+        {queued && <div className="banner banner-info">📴 Saved on your phone — it will upload automatically when you have signal.</div>}
         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save inspection'}</Button>
       </form>
     </Card>
@@ -333,18 +341,25 @@ function AddPhoto({ treeId, userId, onDone }) {
   const [caption, setCaption] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  const [queued, setQueued] = useState(false)
   const submit = async (e) => {
     e.preventDefault()
     if (!file) return setErr('Choose a photo first.')
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setQueued(false)
+    const row = { tree_id: treeId, caption: caption || null, uploaded_by: userId }
     try {
       const photo_path = await uploadPhoto(file, `trees/${treeId}/photos`)
-      const { error } = await supabase.from('tree_photos').insert({
-        tree_id: treeId, photo_path, caption: caption || null, uploaded_by: userId,
-      })
+      const { error } = await supabase.from('tree_photos').insert({ ...row, photo_path })
       if (error) throw error
       setFile(null); setCaption(''); onDone()
-    } catch (e) { setErr(e.message) } finally { setBusy(false) }
+    } catch (e) {
+      const offline = await queueIfOffline(e, {
+        table: 'tree_photos', row,
+        photo: { file, folder: `trees/${treeId}/photos`, field: 'photo_path' },
+      })
+      if (offline) { setFile(null); setCaption(''); setQueued(true) }
+      else setErr(e.message)
+    } finally { setBusy(false) }
   }
   return (
     <Card className="complete-card">
@@ -353,6 +368,7 @@ function AddPhoto({ treeId, userId, onDone }) {
         <Field label="Photo"><input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
         <Field label="Caption"><input value={caption} onChange={(e) => setCaption(e.target.value)} /></Field>
         {err && <div className="banner banner-error">{err}</div>}
+        {queued && <div className="banner banner-info">📴 Saved on your phone — it will upload automatically when you have signal.</div>}
         <Button type="submit" disabled={busy}>{busy ? 'Uploading…' : 'Upload photo'}</Button>
       </form>
     </Card>
@@ -363,13 +379,21 @@ function AddLog({ treeId, userId, onDone }) {
   const [status, setStatus] = useState('Healthy')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [queued, setQueued] = useState(false)
   const submit = async (e) => {
-    e.preventDefault(); setBusy(true)
-    const { error } = await supabase.from('tree_logs').insert({ tree_id: treeId, status, note: note || null, logged_by: userId })
-    if (!error) await supabase.from('trees').update({ status }).eq('id', treeId)
-    setBusy(false)
-    if (error) alert(error.message)
-    else { setNote(''); onDone() }
+    e.preventDefault(); setBusy(true); setQueued(false)
+    const row = { tree_id: treeId, status, note: note || null, logged_by: userId }
+    const after = { table: 'trees', match: { id: treeId }, patch: { status } }
+    try {
+      const { error } = await supabase.from('tree_logs').insert(row)
+      if (error) throw error
+      await supabase.from('trees').update(after.patch).eq('id', treeId)
+      setNote(''); onDone()
+    } catch (e) {
+      const offline = await queueIfOffline(e, { table: 'tree_logs', row, after })
+      if (offline) { setNote(''); setQueued(true) }
+      else alert(e.message)
+    } finally { setBusy(false) }
   }
   return (
     <Card className="complete-card">
@@ -383,6 +407,7 @@ function AddLog({ treeId, userId, onDone }) {
           </Field>
           <Field label="Note"><input value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         </div>
+        {queued && <div className="banner banner-info">📴 Saved on your phone — it will sync when you have signal.</div>}
         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Add to log'}</Button>
       </form>
     </Card>
