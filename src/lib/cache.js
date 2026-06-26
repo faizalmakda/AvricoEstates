@@ -26,6 +26,15 @@ async function get(key) {
   try { const db = await openDb(); return await reqAsync(db.transaction(STORE, 'readonly').objectStore(STORE).get(key)) } catch { return undefined }
 }
 
+// Drop cached entries so they re-fetch fresh next time (call after a mutation).
+export async function cacheDelete(keys) {
+  try {
+    const db = await openDb()
+    const store = db.transaction(STORE, 'readwrite').objectStore(STORE)
+    ;(Array.isArray(keys) ? keys : [keys]).forEach((k) => store.delete(k))
+  } catch { /* ignore */ }
+}
+
 // query is a Supabase builder (thenable). Returns { data, error, fromCache }.
 export async function cachedSelect(key, query) {
   let res

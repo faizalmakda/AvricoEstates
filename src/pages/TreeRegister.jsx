@@ -6,7 +6,7 @@ import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
 import { enqueue, isOfflineError } from '../lib/outbox'
-import { cachedSelect } from '../lib/cache'
+import { cachedSelect, cacheDelete } from '../lib/cache'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
 } from '../components/ui'
@@ -208,6 +208,7 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
           tree_id: created.id, photo_path: path, caption: 'Registration photo', uploaded_by: user.id,
         })
       }
+      await cacheDelete(['trees-full', 'trees-min'])
       setBusy(false)
       onSaved()
     } catch (err) {

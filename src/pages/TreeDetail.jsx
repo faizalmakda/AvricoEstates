@@ -6,8 +6,12 @@ import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { fetchNameMap, nameOf, lastEdited } from '../lib/people'
 import { uploadPhoto } from '../lib/upload'
 import { queueIfOffline } from '../lib/outbox'
-import { cachedSelect } from '../lib/cache'
+import { cachedSelect, cacheDelete } from '../lib/cache'
 import { Button, Card, Spinner, Badge, Field, Banner } from '../components/ui'
+
+// Cache keys to clear after a tree changes, so stale copies don't linger offline.
+const treeCacheKeys = (id) => ['trees-full', 'trees-min',
+  `tree:${id}`, `tree-insp:${id}`, `tree-treat:${id}`, `tree-photos:${id}`, `tree-logs:${id}`, `tree-repl:${id}`]
 
 const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
 
@@ -61,6 +65,7 @@ export default function TreeDetail() {
     if (paths.length) await supabase.storage.from('evidence').remove(paths)
     const { error } = await supabase.rpc('delete_tree_cascade', { _tree_id: id })
     if (error) return alert(error.message)
+    await cacheDelete(treeCacheKeys(id))
     navigate('/orchard')
   }
 
@@ -457,6 +462,7 @@ function EditTree({ tree, onDone, onCancel }) {
     try {
       const { error } = await supabase.from('trees').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', tree.id)
       if (error) throw error
+      await cacheDelete(treeCacheKeys(tree.id))
       onDone()
     } catch (e) {
       const offline = await queueIfOffline(e, { op: 'update', table: 'trees', match: { id: tree.id }, patch })
