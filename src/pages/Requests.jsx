@@ -240,6 +240,7 @@ function RequestModal({ request, items, zones, userId, onClose, onSaved }) {
 function PurchaseModal({ req, userId, onClose, onSaved }) {
   const [qty, setQty] = useState(String(req.quantity))
   const [note, setNote] = useState('')
+  const [addToStock, setAddToStock] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -256,19 +257,21 @@ function PurchaseModal({ req, userId, onClose, onSaved }) {
       }).eq('id', req.id)
       if (rErr) throw rErr
 
-      // 2) add it to stock
-      if (req.item_id) {
-        const { error: mErr } = await supabase.from('stock_movements').insert({
-          item_id: req.item_id, movement_type: 'in', quantity: purchased, unit: req.unit || null,
-          reason: 'Purchased (request)', performed_by: userId,
-        })
-        if (mErr) throw mErr
-      } else {
-        // brand-new item — create it with the purchased quantity as the baseline
-        const { error: iErr } = await supabase.from('inventory').insert({
-          name: req.item_name, unit: req.unit || null, quantity: purchased, created_by: userId,
-        })
-        if (iErr) throw iErr
+      // 2) optionally add it to stock
+      if (addToStock) {
+        if (req.item_id) {
+          const { error: mErr } = await supabase.from('stock_movements').insert({
+            item_id: req.item_id, movement_type: 'in', quantity: purchased, unit: req.unit || null,
+            reason: 'Purchased (request)', performed_by: userId,
+          })
+          if (mErr) throw mErr
+        } else {
+          // brand-new item — create it with the purchased quantity as the baseline
+          const { error: iErr } = await supabase.from('inventory').insert({
+            name: req.item_name, unit: req.unit || null, quantity: purchased, created_by: userId,
+          })
+          if (iErr) throw iErr
+        }
       }
       onSaved()
     } catch (e) { setError(e.message) } finally { setBusy(false) }
@@ -276,14 +279,23 @@ function PurchaseModal({ req, userId, onClose, onSaved }) {
 
   return (
     <Modal title={`Mark purchased — ${req.item_name}`} onClose={onClose}>
-      <p className="muted small">Requested: <strong>{req.quantity} {req.unit || ''}</strong>. This amount will be added to stock.</p>
+      <p className="muted small">Requested: <strong>{req.quantity} {req.unit || ''}</strong></p>
       <form onSubmit={save}>
         <Field label="Quantity purchased"><input type="number" step="any" min="0" value={qty} onChange={(e) => setQty(e.target.value)} required /></Field>
         <Field label="Note (optional)"><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="supplier, cost…" /></Field>
+        <label className="checkbox">
+          <input type="checkbox" checked={addToStock} onChange={(e) => setAddToStock(e.target.checked)} />
+          Add this to inventory stock
+        </label>
+        <p className="muted small">
+          {addToStock
+            ? 'The purchased quantity will be added to inventory.'
+            : 'Marked as purchased only — inventory stock is not changed (e.g. a tool, service, or one-off item).'}
+        </p>
         {error && <div className="banner banner-error">{error}</div>}
         <div className="modal-actions">
           <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Purchased → add to stock'}</Button>
+          <Button type="submit" disabled={busy}>{busy ? 'Saving…' : addToStock ? 'Purchased → add to stock' : 'Mark purchased'}</Button>
         </div>
       </form>
     </Modal>
