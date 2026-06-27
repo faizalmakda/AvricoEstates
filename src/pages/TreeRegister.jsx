@@ -175,6 +175,8 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
       planted_on: form.planted_on || null,
       status: form.status,
       notes: form.notes || null,
+      // Registration counts as the first check, so "Last inspection" is filled.
+      last_inspection_on: new Date().toISOString().slice(0, 10),
       created_by: user.id,
     }
 
