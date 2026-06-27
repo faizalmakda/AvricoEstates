@@ -92,7 +92,6 @@ export default function TreeDetail() {
           <>
             <div className="meta-grid">
               <Meta label="Species" value={tree.species || '—'} />
-              <Meta label="Location" value={tree.location || '—'} />
               <Meta label="Planted" value={tree.planted_on || '—'} />
               <Meta label="Last inspection" value={tree.last_inspection_on || '—'} />
             </div>
@@ -456,7 +455,7 @@ function EditTree({ tree, onDone, onCancel }) {
   const save = async (e) => {
     e.preventDefault(); setBusy(true); setQueued(false)
     const patch = {
-      species: f.species, location: f.location, planted_on: f.planted_on || null,
+      species: f.species, planted_on: f.planted_on || null,
       status: f.status, notes: f.notes,
     }
     try {
@@ -479,7 +478,6 @@ function EditTree({ tree, onDone, onCancel }) {
         </Field>
         <Field label="Species"><input value={f.species || ''} onChange={set('species')} /></Field>
       </div>
-      <Field label="Location"><input value={f.location || ''} onChange={set('location')} /></Field>
       <Field label="Planted on"><input type="date" value={f.planted_on || ''} onChange={set('planted_on')} /></Field>
       <Field label="Notes"><textarea rows={2} value={f.notes || ''} onChange={set('notes')} /></Field>
       {queued && <div className="banner banner-info">📴 Saved on your phone — changes will sync when you have signal.</div>}

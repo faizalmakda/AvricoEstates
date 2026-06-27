@@ -52,7 +52,7 @@ export default function TreeRegister() {
       if (zoneFilter && t.zone?.code !== zoneFilter) return false
       if (statusFilter && t.status !== statusFilter) return false
       if (q) {
-        const hay = `${t.code} ${t.species || ''} ${t.location || ''}`.toLowerCase()
+        const hay = `${t.code} ${t.species || ''}`.toLowerCase()
         if (!hay.includes(q.toLowerCase())) return false
       }
       return true
@@ -78,7 +78,7 @@ export default function TreeRegister() {
       <div className="toolbar">
         <input
           className="search"
-          placeholder="Search ID, species, location…"
+          placeholder="Search ID, species…"
           defaultValue={q}
           onChange={(e) => setFilter('q', e.target.value)}
         />
