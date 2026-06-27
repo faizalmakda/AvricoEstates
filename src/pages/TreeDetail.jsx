@@ -262,15 +262,16 @@ function Timeline({ items, render, empty, bare }) {
 
 // ---- Forms ----------------------------------------------------------------
 function AddInspection({ treeId, userId, onDone }) {
-  const [f, setF] = useState({ status: 'Healthy', findings: '', date: new Date().toISOString().slice(0, 10) })
+  const [f, setF] = useState({ status: 'Healthy', findings: '' })
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   const [queued, setQueued] = useState(false)
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null); setQueued(false)
-    const row = { tree_id: treeId, inspection_date: f.date, status: f.status, findings: f.findings || null, inspector_id: userId }
-    const after = { table: 'trees', match: { id: treeId }, patch: { status: f.status, last_inspection_on: f.date } }
+    const today = new Date().toISOString().slice(0, 10) // auto-stamped, no manual entry
+    const row = { tree_id: treeId, inspection_date: today, status: f.status, findings: f.findings || null, inspector_id: userId }
+    const after = { table: 'trees', match: { id: treeId }, patch: { status: f.status, last_inspection_on: today } }
     try {
       let photo_path = null
       if (file) photo_path = await uploadPhoto(file, `trees/${treeId}/inspections`)
@@ -291,14 +292,11 @@ function AddInspection({ treeId, userId, onDone }) {
     <Card className="complete-card">
       <h2>Log an inspection</h2>
       <form onSubmit={submit}>
-        <div className="row">
-          <Field label="Status found">
-            <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
-              {TREE_STATUSES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-          </Field>
-          <Field label="Date"><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
-        </div>
+        <Field label="Status found">
+          <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+            {TREE_STATUSES.map((s) => <option key={s}>{s}</option>)}
+          </select>
+        </Field>
         <Field label="Findings"><textarea rows={2} value={f.findings} onChange={(e) => setF({ ...f, findings: e.target.value })} /></Field>
         <Field label="Photo"><input type="file" accept="image/*" capture="environment" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></Field>
         {err && <div className="banner banner-error">{err}</div>}
