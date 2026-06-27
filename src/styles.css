@@ -354,5 +354,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
   .table td { border: none; padding: 4px 16px; }
   .table td::before { content: attr(data-label) ': '; font-weight: 600; color: var(--muted); }
   .table td.row-actions::before { content: ''; }
+  .table td.row-actions { display: flex; flex-wrap: wrap; gap: 16px; padding-top: 10px; }
   .bar-label { width: 110px; }
 }

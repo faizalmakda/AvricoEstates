@@ -125,6 +125,7 @@ export default function Inventory() {
                     <td data-label="Item">
                       <strong>{it.name}</strong>
                       {it.category && <div className="muted small">{it.category}</div>}
+                      {it.created_by && <div className="muted small">Added by {nameOf(names, it.created_by)}</div>}
                     </td>
                     <td data-label="In stock">
                       <span className="stock-num">{it.stock}</span> <span className="muted small">{it.unit || ''}</span>

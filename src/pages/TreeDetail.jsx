@@ -387,8 +387,9 @@ function AddLog({ treeId, userId, onDone }) {
   const [queued, setQueued] = useState(false)
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setQueued(false)
+    const today = new Date().toISOString().slice(0, 10)
     const row = { tree_id: treeId, status, note: note || null, logged_by: userId }
-    const after = { table: 'trees', match: { id: treeId }, patch: { status } }
+    const after = { table: 'trees', match: { id: treeId }, patch: { status, last_inspection_on: today } }
     try {
       const { error } = await supabase.from('tree_logs').insert(row)
       if (error) throw error
@@ -457,6 +458,7 @@ function EditTree({ tree, onDone, onCancel }) {
     const patch = {
       species: f.species, planted_on: f.planted_on || null,
       status: f.status, notes: f.notes,
+      last_inspection_on: new Date().toISOString().slice(0, 10),
     }
     try {
       const { error } = await supabase.from('trees').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', tree.id)
