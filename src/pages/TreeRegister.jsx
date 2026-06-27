@@ -145,7 +145,6 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     row: '',
     tree: '',
     species: '',
-    location: '',
     planted_on: '',
     status: 'Healthy',
     notes: '',
@@ -173,7 +172,6 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
       row_number: Number(form.row),
       tree_number: Number(form.tree),
       species: form.species || null,
-      location: form.location || null,
       planted_on: form.planted_on || null,
       status: form.status,
       notes: form.notes || null,
@@ -291,7 +289,6 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
         </div>
 
         <Field label="Species"><input value={form.species} onChange={set('species')} placeholder="e.g. Hass Avocado" /></Field>
-        <Field label="Location / notes for finding it"><input value={form.location} onChange={set('location')} /></Field>
         <Field label="Planted on"><input type="date" value={form.planted_on} onChange={set('planted_on')} /></Field>
         <Field label="Notes"><textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
         <Field label="Photo (optional)" hint="Auto-compressed before saving">
