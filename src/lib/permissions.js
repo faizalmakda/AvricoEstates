@@ -74,23 +74,17 @@ export const can = {
   viewAudit: isOwner,      // activity / audit log
 }
 
-// Tree status options.
-export const TREE_STATUSES = [
-  'Healthy',
-  'Needs Inspection',
-  'Weak',
-  'Diseased',
-  'Dead',
-  'Missing',
-  'Replaced',
-]
+// Tree status options — simplified to three.
+export const TREE_STATUSES = ['Healthy', 'Needs Attention', 'Dead']
 
 export const STATUS_COLORS = {
   Healthy: '#2e7d32',
+  'Needs Attention': '#ef6c00',
+  Dead: '#6d4c41',
+  // Legacy statuses kept so older history still renders with a colour.
   'Needs Inspection': '#f9a825',
   Weak: '#ef6c00',
   Diseased: '#c62828',
-  Dead: '#6d4c41',
   Missing: '#546e7a',
   Replaced: '#1565c0',
 }

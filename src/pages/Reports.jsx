@@ -11,8 +11,6 @@ function currentStock(item, movements) {
       : (m.movement_type === 'in' || m.movement_type === 'adjust') ? Number(m.quantity || 0) : 0), 0)
 }
 
-const ATTENTION = ['Dead', 'Diseased', 'Weak', 'Missing', 'Needs Inspection']
-
 export default function Reports() {
   const [d, setD] = useState(null)
 
@@ -33,14 +31,14 @@ export default function Reports() {
       const treeRows = (trees.data ?? []).filter((t) => !t.archived && !t.deleted_at)
 
       // trees & attention by zone
-      const perZone = {}, deadByZone = {}, diseasedByZone = {}, byStatus = {}
-      zoneCodes.forEach((c) => { perZone[c] = 0; deadByZone[c] = 0; diseasedByZone[c] = 0 })
+      const perZone = {}, deadByZone = {}, attentionByZone = {}, byStatus = {}
+      zoneCodes.forEach((c) => { perZone[c] = 0; deadByZone[c] = 0; attentionByZone[c] = 0 })
       treeRows.forEach((t) => {
         const z = zoneMap[t.zone_id]
         if (z != null) {
           perZone[z] = (perZone[z] || 0) + 1
           if (t.status === 'Dead') deadByZone[z]++
-          if (t.status === 'Diseased' || t.status === 'Weak') diseasedByZone[z]++
+          else if (t.status !== 'Healthy') attentionByZone[z]++
         }
         byStatus[t.status] = (byStatus[t.status] || 0) + 1
       })
@@ -68,7 +66,7 @@ export default function Reports() {
       })
 
       setD({
-        treeTotal: treeRows.length, perZone, deadByZone, diseasedByZone, byStatus,
+        treeTotal: treeRows.length, perZone, deadByZone, attentionByZone, byStatus,
         taskCounts, completionRate, taskTotal: taskRows.length,
         yieldByZone, yieldByMonth, yieldTotal: Object.values(yieldByZone).reduce((s, n) => s + n, 0),
         items, low, storage,
@@ -117,8 +115,8 @@ export default function Reports() {
           <BarList data={d.deadByZone} color={STATUS_COLORS.Dead} empty="No dead trees recorded." />
         </Card>
         <Card>
-          <h2>Diseased / weak by zone</h2>
-          <BarList data={d.diseasedByZone} color={STATUS_COLORS.Diseased} empty="None recorded." />
+          <h2>Needs attention by zone</h2>
+          <BarList data={d.attentionByZone} color={STATUS_COLORS['Needs Attention']} empty="None recorded." />
         </Card>
       </div>
 

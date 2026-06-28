@@ -49,9 +49,7 @@ export default function Zones() {
             const inZone = trees.filter((t) => t.zone_id === z.id)
             const byStatus = {}
             inZone.forEach((t) => { byStatus[t.status] = (byStatus[t.status] || 0) + 1 })
-            const attention = inZone.filter((t) =>
-              ['Dead', 'Diseased', 'Weak', 'Needs Inspection', 'Missing'].includes(t.status)
-            ).length
+            const attention = inZone.filter((t) => !['Healthy', 'Dead'].includes(t.status)).length
             const pct = z.planned_tree_count ? Math.round((inZone.length / z.planned_tree_count) * 100) : 0
             return (
               <Card key={z.id} className="zone-card">

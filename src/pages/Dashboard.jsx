@@ -82,8 +82,8 @@ export default function Dashboard() {
 
   if (!d) return <Spinner />
 
-  const attention = (d.byStatus.Dead || 0) + (d.byStatus.Diseased || 0) + (d.byStatus.Weak || 0) +
-    (d.byStatus['Needs Inspection'] || 0) + (d.byStatus.Missing || 0)
+  // Anything that isn't Healthy or Dead counts as needing attention.
+  const attention = Object.entries(d.byStatus).reduce((s, [k, v]) => (k === 'Healthy' || k === 'Dead' ? s : s + v), 0)
   const maxZone = Math.max(1, ...Object.values(d.perZone))
   const maxYield = Math.max(1, ...Object.values(d.yieldByZone))
 
@@ -108,10 +108,8 @@ export default function Dashboard() {
       <div className="stat-grid">
         <Stat to="/orchard" icon="🌳" value={d.totalTrees} label="Trees registered" />
         <Stat to="/orchard" icon="✅" value={d.byStatus.Healthy || 0} label="Healthy" />
+        <Stat to="/trees?status=Needs Attention" icon="⚠️" value={attention} label="Needs attention" tone={attention ? 'warn' : null} />
         <Stat to="/trees?status=Dead" icon="🪦" value={d.byStatus.Dead || 0} label="Dead" tone={d.byStatus.Dead ? 'warn' : null} />
-        <Stat to="/trees?status=Diseased" icon="🦠" value={d.byStatus.Diseased || 0} label="Diseased" tone={d.byStatus.Diseased ? 'warn' : null} />
-        <Stat to="/trees?status=Weak" icon="🍂" value={d.byStatus.Weak || 0} label="Weak" tone={d.byStatus.Weak ? 'warn' : null} />
-        <Stat to="/trees" icon="⚠️" value={attention} label="Need attention" tone={attention ? 'warn' : null} />
       </div>
 
       {/* Tasks */}
