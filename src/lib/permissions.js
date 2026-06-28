@@ -74,8 +74,8 @@ export const can = {
   viewAudit: isOwner,      // activity / audit log
 }
 
-// Tree status options — simplified to three.
-export const TREE_STATUSES = ['Healthy', 'Needs Attention', 'Dead']
+// Tree status options.
+export const TREE_STATUSES = ['Healthy', 'Needs Attention', 'Diseased', 'Dead']
 
 export const STATUS_COLORS = {
   Healthy: '#2e7d32',

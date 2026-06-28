@@ -82,8 +82,8 @@ export default function Dashboard() {
 
   if (!d) return <Spinner />
 
-  // Anything that isn't Healthy or Dead counts as needing attention.
-  const attention = Object.entries(d.byStatus).reduce((s, [k, v]) => (k === 'Healthy' || k === 'Dead' ? s : s + v), 0)
+  // "Needs attention" = anything that isn't Healthy, Diseased or Dead (those have their own tiles).
+  const attention = Object.entries(d.byStatus).reduce((s, [k, v]) => (['Healthy', 'Diseased', 'Dead'].includes(k) ? s : s + v), 0)
   const maxZone = Math.max(1, ...Object.values(d.perZone))
   const maxYield = Math.max(1, ...Object.values(d.yieldByZone))
 
@@ -109,6 +109,7 @@ export default function Dashboard() {
         <Stat to="/orchard" icon="🌳" value={d.totalTrees} label="Trees registered" />
         <Stat to="/orchard" icon="✅" value={d.byStatus.Healthy || 0} label="Healthy" />
         <Stat to="/trees?status=Needs Attention" icon="⚠️" value={attention} label="Needs attention" tone={attention ? 'warn' : null} />
+        <Stat to="/trees?status=Diseased" icon="🦠" value={d.byStatus.Diseased || 0} label="Diseased" tone={d.byStatus.Diseased ? 'warn' : null} />
         <Stat to="/trees?status=Dead" icon="🪦" value={d.byStatus.Dead || 0} label="Dead" tone={d.byStatus.Dead ? 'warn' : null} />
       </div>
 
