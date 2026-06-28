@@ -109,7 +109,8 @@ export default function Dashboard() {
         <Stat to="/orchard" icon="🌳" value={d.totalTrees} label="Trees registered" />
         <Stat to="/orchard" icon="✅" value={d.byStatus.Healthy || 0} label="Healthy" />
         <Stat to="/trees?status=Dead" icon="🪦" value={d.byStatus.Dead || 0} label="Dead" tone={d.byStatus.Dead ? 'warn' : null} />
-        <Stat to="/trees?status=Diseased" icon="🦠" value={(d.byStatus.Diseased || 0) + (d.byStatus.Weak || 0)} label="Diseased / weak" tone={(d.byStatus.Diseased || d.byStatus.Weak) ? 'warn' : null} />
+        <Stat to="/trees?status=Diseased" icon="🦠" value={d.byStatus.Diseased || 0} label="Diseased" tone={d.byStatus.Diseased ? 'warn' : null} />
+        <Stat to="/trees?status=Weak" icon="🍂" value={d.byStatus.Weak || 0} label="Weak" tone={d.byStatus.Weak ? 'warn' : null} />
         <Stat to="/trees" icon="⚠️" value={attention} label="Need attention" tone={attention ? 'warn' : null} />
       </div>
 
