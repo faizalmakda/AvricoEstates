@@ -59,6 +59,19 @@ export default function TreeDetail() {
     if (i.photo_path) await supabase.storage.from('evidence').remove([i.photo_path])
     const { error } = await supabase.from('tree_inspections').delete().eq('id', i.id)
     if (error) return alert(error.message)
+    // If the tree's note came from this inspection, revert it to the previous
+    // inspection's findings (or clear it if there are none).
+    if (tree?.notes && i.findings && tree.notes === i.findings) {
+      const { data: remaining } = await supabase
+        .from('tree_inspections')
+        .select('findings, inspection_date, created_at')
+        .eq('tree_id', id)
+        .order('inspection_date', { ascending: false })
+        .order('created_at', { ascending: false })
+      const prev = (remaining || []).find((r) => r.findings)
+      await supabase.from('trees').update({ notes: prev ? prev.findings : null }).eq('id', id)
+    }
+    await cacheDelete(['trees-full', 'trees-min', `tree:${id}`, `tree-insp:${id}`])
     load()
   }
 
