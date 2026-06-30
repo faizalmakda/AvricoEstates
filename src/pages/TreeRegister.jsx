@@ -104,7 +104,7 @@ export default function TreeRegister() {
         <Card className="table-card">
           <table className="table">
             <thead>
-              <tr><th>Tree ID</th><th>Species</th><th>Status</th><th>Last inspection</th></tr>
+              <tr><th>Tree ID</th><th>Species</th><th>Status</th><th>Last inspection</th><th>Notes</th></tr>
             </thead>
             <tbody>
               {visible.map((t) => (
@@ -115,6 +115,7 @@ export default function TreeRegister() {
                   <td data-label="Species">{t.species || '—'}</td>
                   <td data-label="Status"><Badge color={STATUS_COLORS[t.status]}>{t.status}</Badge></td>
                   <td data-label="Last inspection">{t.last_inspection_on || '—'}</td>
+                  <td data-label="Notes" className="tree-note">{t.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>

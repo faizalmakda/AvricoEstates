@@ -167,6 +167,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .table tr:last-child td { border-bottom: none; }
 .row-actions { display: flex; gap: 12px; white-space: nowrap; flex-wrap: wrap; }
 .stock-num { font-weight: 700; font-size: 1.05rem; }
+.tree-note { font-size: .82rem; color: var(--muted); white-space: normal; line-height: 1.35; }
 
 /* Inventory requests */
 .req-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
