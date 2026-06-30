@@ -176,6 +176,18 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .stock-num { font-weight: 700; font-size: 1.05rem; }
 .tree-note { font-size: .82rem; color: var(--muted); white-space: normal; line-height: 1.35; }
 
+/* Game */
+.game-cols { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.game-wrap { position: relative; width: 100%; max-width: 360px; touch-action: manipulation; user-select: none; }
+.game-canvas { width: 100%; height: auto; border-radius: 14px; box-shadow: var(--shadow); display: block; cursor: pointer; }
+.game-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.game-card { background: rgba(255,255,255,.94); border-radius: 14px; padding: 18px 24px; text-align: center; box-shadow: var(--shadow); }
+.game-card h2 { margin: 0 0 6px; color: var(--green); }
+.leaderboard { flex: 1; min-width: 220px; }
+.board-list { margin: 8px 0 0; padding-left: 22px; }
+.board-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.board-list li:last-child { border-bottom: none; }
+
 /* Inventory requests */
 .req-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .req-row:last-child { border-bottom: none; }

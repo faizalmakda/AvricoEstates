@@ -18,6 +18,7 @@ const NAV = [
   { to: '/requests', label: 'Requests', icon: '🧾', show: (p) => can.viewRequests(p) },
   { to: '/produce', label: 'Yield', icon: '🧺', show: () => true },
   { to: '/reports', label: 'Reports', icon: '📊', show: (p) => can.viewReports(p) },
+  { to: '/game', label: 'Play', icon: '🎮', show: () => true },
   { to: '/activity', label: 'Activity', icon: '📜', show: (p) => can.viewAudit(p) },
   { to: '/users', label: 'Users', icon: '👥', show: (p) => can.manageUsers(p) },
 ]
