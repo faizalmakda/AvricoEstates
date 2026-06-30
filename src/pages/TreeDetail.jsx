@@ -69,7 +69,8 @@ export default function TreeDetail() {
         .order('inspection_date', { ascending: false })
         .order('created_at', { ascending: false })
       const prev = (remaining || []).find((r) => r.findings)
-      await supabase.from('trees').update({ notes: prev ? prev.findings : null }).eq('id', id)
+      // Previous inspection's findings, or fall back to the registration/base note.
+      await supabase.from('trees').update({ notes: prev ? prev.findings : (tree.base_note ?? null) }).eq('id', id)
     }
     await cacheDelete(['trees-full', 'trees-min', `tree:${id}`, `tree-insp:${id}`])
     load()
@@ -476,6 +477,7 @@ function ReplaceButton({ tree, userId, onDone }) {
       await supabase.from('trees').update({
         status: 'Healthy', planted_on: today, last_inspection_on: today,
         notes: reason ? `Replaced (${today}) — ${reason}` : `Replaced (${today})`,
+        base_note: reason ? `Replaced (${today}) — ${reason}` : `Replaced (${today})`,
       }).eq('id', tree.id)
       await cacheDelete(['trees-full', 'trees-min', `tree:${tree.id}`, `tree-repl:${tree.id}`])
     }
@@ -505,6 +507,7 @@ function EditTree({ tree, onDone, onCancel }) {
     const patch = {
       species: f.species, planted_on: f.planted_on || null,
       status: f.status, notes: f.notes,
+      base_note: f.notes, // a manual edit sets the fallback note too
       last_inspection_on: new Date().toISOString().slice(0, 10),
     }
     try {
