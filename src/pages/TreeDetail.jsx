@@ -54,6 +54,22 @@ export default function TreeDetail() {
   if (loading) return <Spinner />
   if (!tree) return <Banner kind="error">Tree not found.</Banner>
 
+  const deleteInspection = async (i) => {
+    if (!confirm('Delete this inspection permanently? This cannot be undone.')) return
+    if (i.photo_path) await supabase.storage.from('evidence').remove([i.photo_path])
+    const { error } = await supabase.from('tree_inspections').delete().eq('id', i.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
+  const deletePhoto = async (p) => {
+    if (!confirm('Delete this photo permanently? This cannot be undone.')) return
+    if (p.photo_path) await supabase.storage.from('evidence').remove([p.photo_path])
+    const { error } = await supabase.from('tree_photos').delete().eq('id', p.id)
+    if (error) return alert(error.message)
+    load()
+  }
+
   const remove = async () => {
     if (!confirm('Permanently delete this tree and ALL its records (inspections, treatments, photos, status logs)?\n\nThis cannot be undone. The position will be free to register again.')) return
     // Best-effort cleanup of this tree's photos from storage.
@@ -139,6 +155,7 @@ export default function TreeDetail() {
               meta: `${nameOf(names, i.inspector_id)} · ${i.inspection_date}`,
               body: i.findings,
               photo: i.photo_path,
+              onDelete: can.editTree(profile) ? () => deleteInspection(i) : undefined,
             })}
             empty="No inspections logged yet."
           />
@@ -168,14 +185,19 @@ export default function TreeDetail() {
           ) : (
             <div className="photo-grid">
               {data.photos.map((p) => (
-                <a key={p.id} href={evidenceUrl(p.photo_path)} target="_blank" rel="noreferrer" className="photo-tile">
-                  <img src={evidenceUrl(p.photo_path)} alt={p.caption || 'Tree photo'} />
+                <div key={p.id} className="photo-tile">
+                  <a href={evidenceUrl(p.photo_path)} target="_blank" rel="noreferrer">
+                    <img src={evidenceUrl(p.photo_path)} alt={p.caption || 'Tree photo'} />
+                  </a>
                   <span>
                     <strong>{new Date(p.created_at).toLocaleDateString()}</strong>
                     {p.caption ? ` · ${p.caption}` : ''}
                     <br />{nameOf(names, p.uploaded_by)}
                   </span>
-                </a>
+                  {can.editTree(profile) && (
+                    <button className="link danger" onClick={() => deletePhoto(p)}>Delete</button>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -251,6 +273,7 @@ function Timeline({ items, render, empty, bare }) {
                   <img className="evidence-thumb" src={evidenceUrl(r.photo)} alt="" />
                 </a>
               )}
+              {r.onDelete && <div><button className="link danger" onClick={r.onDelete}>Delete</button></div>}
             </div>
           </li>
         )
@@ -271,7 +294,11 @@ function AddInspection({ treeId, userId, onDone }) {
     e.preventDefault(); setBusy(true); setErr(null); setQueued(false)
     const today = new Date().toISOString().slice(0, 10) // auto-stamped, no manual entry
     const row = { tree_id: treeId, inspection_date: today, status: f.status, findings: f.findings || null, inspector_id: userId }
-    const after = { table: 'trees', match: { id: treeId }, patch: { status: f.status, last_inspection_on: today } }
+    // Latest findings become the tree's notes (the current advice for this tree).
+    const after = {
+      table: 'trees', match: { id: treeId },
+      patch: { status: f.status, last_inspection_on: today, ...(f.findings ? { notes: f.findings } : {}) },
+    }
     try {
       let photo_path = null
       if (file) photo_path = await uploadPhoto(file, `trees/${treeId}/inspections`)
