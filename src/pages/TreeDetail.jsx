@@ -305,6 +305,7 @@ function AddInspection({ treeId, userId, onDone }) {
       const { error } = await supabase.from('tree_inspections').insert({ ...row, photo_path })
       if (error) throw error
       await supabase.from('trees').update(after.patch).eq('id', treeId)
+      await cacheDelete(['trees-full', 'trees-min', `tree:${treeId}`, `tree-insp:${treeId}`])
       setF({ ...f, findings: '' }); setFile(null); onDone()
     } catch (e) {
       const offline = await queueIfOffline(e, {
@@ -419,6 +420,7 @@ function AddLog({ treeId, userId, onDone }) {
       const { error } = await supabase.from('tree_logs').insert(row)
       if (error) throw error
       await supabase.from('trees').update(after.patch).eq('id', treeId)
+      await cacheDelete(['trees-full', 'trees-min', `tree:${treeId}`, `tree-logs:${treeId}`])
       setNote(''); onDone()
     } catch (e) {
       const offline = await queueIfOffline(e, { table: 'tree_logs', row, after })
