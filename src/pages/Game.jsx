@@ -64,17 +64,21 @@ export default function Game() {
     const loop = () => {
       const s = g.current
       if (s.mode === 'playing') {
+        // Gets harder with score: faster, narrower gaps, tighter spacing.
+        const speed = SPEED + Math.min(s.score * 0.08, 2.6)
+        const spawnGap = Math.max(SPAWN - s.score * 2, 150)
         s.v += GRAVITY; s.y += s.v
         if (s.y < R) { s.y = R; s.v = 0 }
-        s.pipes.forEach((p) => { p.x -= SPEED })
-        if (s.pipes.length === 0 || s.pipes[s.pipes.length - 1].x < W - SPAWN) {
-          s.pipes.push({ x: W, top: 60 + Math.random() * (H - GROUND - GAP - 120), scored: false })
+        s.pipes.forEach((p) => { p.x -= speed })
+        if (s.pipes.length === 0 || s.pipes[s.pipes.length - 1].x < W - spawnGap) {
+          const gap = Math.max(GAP - s.score * 2.5, 118)
+          s.pipes.push({ x: W, top: 48 + Math.random() * (H - GROUND - gap - 96), gap, scored: false })
         }
         s.pipes = s.pipes.filter((p) => p.x + PIPE_W > -2)
         for (const p of s.pipes) {
           if (!p.scored && p.x + PIPE_W < BIRD_X) { p.scored = true; s.score += 1 }
           if (hitRect(BIRD_X, s.y, p.x, 0, PIPE_W, p.top) ||
-              hitRect(BIRD_X, s.y, p.x, p.top + GAP, PIPE_W, H)) { gameOver(); break }
+              hitRect(BIRD_X, s.y, p.x, p.top + p.gap, PIPE_W, H)) { gameOver(); break }
         }
         if (s.y + R > H - GROUND) { s.y = H - GROUND - R; gameOver() }
       }
@@ -82,8 +86,9 @@ export default function Game() {
       ctx.fillStyle = '#f4f1e9'; ctx.fillRect(0, 0, W, H)
       ctx.fillStyle = '#4d7a32'
       for (const p of s.pipes) {
+        const gp = p.gap || GAP
         ctx.fillRect(p.x, 0, PIPE_W, p.top)
-        ctx.fillRect(p.x, p.top + GAP, PIPE_W, H - GROUND - (p.top + GAP))
+        ctx.fillRect(p.x, p.top + gp, PIPE_W, H - GROUND - (p.top + gp))
       }
       ctx.fillStyle = '#3a5d26'; ctx.fillRect(0, H - GROUND, W, GROUND)
       const img = imgRef.current
