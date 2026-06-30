@@ -453,11 +453,18 @@ function ReplaceButton({ tree, userId, onDone }) {
   const [busy, setBusy] = useState(false)
   const submit = async () => {
     setBusy(true)
+    const today = new Date().toISOString().slice(0, 10)
     const { error } = await supabase.from('tree_replacements').insert({
       tree_id: tree.id, previous_status: tree.status, reason: reason || null, performed_by: userId,
     })
     if (!error) {
-      await supabase.from('trees').update({ status: 'Healthy', planted_on: new Date().toISOString().slice(0, 10) }).eq('id', tree.id)
+      // Fresh tree in the same spot: reset to Healthy, new planting date, and
+      // record the replacement in the notes.
+      await supabase.from('trees').update({
+        status: 'Healthy', planted_on: today, last_inspection_on: today,
+        notes: reason ? `Replaced (${today}) — ${reason}` : `Replaced (${today})`,
+      }).eq('id', tree.id)
+      await cacheDelete(['trees-full', 'trees-min', `tree:${tree.id}`, `tree-repl:${tree.id}`])
     }
     setBusy(false)
     if (error) alert(error.message)
