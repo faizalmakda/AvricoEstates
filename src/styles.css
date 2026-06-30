@@ -155,8 +155,15 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 /* ---------- Toolbar / segmented ---------- */
 .toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
 .search { max-width: 320px; }
-.segmented { display: inline-flex; background: #fff; border-radius: 10px; padding: 4px; box-shadow: var(--shadow); margin-bottom: 16px; }
-.seg { border: none; background: none; padding: 8px 16px; border-radius: 8px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
+.segmented {
+  display: flex; flex-wrap: nowrap;
+  width: max-content; max-width: 100%;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: #fff; border-radius: 10px; padding: 4px; box-shadow: var(--shadow); margin-bottom: 16px;
+  scrollbar-width: none;
+}
+.segmented::-webkit-scrollbar { display: none; }
+.seg { flex: 0 0 auto; white-space: nowrap; border: none; background: none; padding: 8px 16px; border-radius: 8px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
 .seg.active { background: var(--green-soft); color: var(--green); }
 
 /* ---------- Tables ---------- */
