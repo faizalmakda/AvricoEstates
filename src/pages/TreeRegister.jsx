@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
-import { enqueue, isOfflineError } from '../lib/outbox'
+import { enqueue, isOfflineError, pendingInserts } from '../lib/outbox'
 import { cachedSelect, cacheDelete } from '../lib/cache'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
@@ -183,6 +183,18 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
       created_by: user.id,
     }
 
+    // 0) Instant duplicate check — runs whether online or offline, so a
+    // duplicate is caught immediately (offline registration used to skip this).
+    const activeDup = trees.find((t) => t.code === code && !t.archived && !t.deleted_at)
+    if (activeDup) { setBusy(false); setDuplicate(activeDup); return }
+    // Also catch a tree registered earlier this offline session, still queued.
+    const alreadyQueued = (await pendingInserts('trees')).some((r) => r.code === code)
+    if (alreadyQueued) {
+      setBusy(false)
+      setError(`Tree ${code} is already saved on this phone and waiting to sync — no need to add it again.`)
+      return
+    }
+
     try {
       // 1) Duplicate check — never create two trees at the same position.
       const { data: existing, error: dupErr } = await supabase
@@ -216,13 +228,8 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
       onSaved()
     } catch (err) {
       // No signal? Queue the registration (and photo) to sync later.
+      // (Duplicates were already ruled out by the instant check above.)
       if (isOfflineError(err)) {
-        // The online duplicate check couldn't run — fall back to the locally
-        // cached tree list so we don't queue a duplicate that will only fail
-        // on sync. If they meant to add a photo, the dialog offers that.
-        const localDup = trees.find((t) => t.code === code && !t.archived && !t.deleted_at)
-        if (localDup) { setBusy(false); setDuplicate(localDup); return }
-
         const treeId = crypto.randomUUID()
         await enqueue({ table: 'trees', row: { id: treeId, ...treeRow } })
         if (photo) {
