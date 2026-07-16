@@ -6,7 +6,7 @@ import { can, ROLE_LABELS } from '../lib/permissions'
 import { isDemo } from '../supabaseClient'
 import { resetDemo } from '../lib/mockBackend'
 import { Button, Modal, Field } from './ui'
-import { subscribe, getStatus, processOutbox } from '../lib/outbox'
+import { subscribe, getStatus, processOutbox, retryFailed, discardFailed } from '../lib/outbox'
 import logoMark from '../assets/logo-mark.png'
 
 // Navigation items. `show` decides visibility based on the user's role.
@@ -168,8 +168,22 @@ function SyncIndicator() {
         ? `⏳ Syncing ${s.pending} saved item${s.pending === 1 ? '' : 's'}…`
         : `📴 ${s.pending} item${s.pending === 1 ? '' : 's'} waiting to upload`}
       {s.failed > 0 && ` · ${s.failed} failed`}
-      {!s.syncing && navigator.onLine && (
+      {!s.syncing && navigator.onLine && s.pending > 0 && (
         <button className="link" onClick={() => processOutbox()}>Sync now</button>
+      )}
+      {s.failed > 0 && (
+        <>
+          <button className="link" onClick={() => retryFailed()}>Retry failed</button>
+          <button
+            className="link"
+            onClick={() => {
+              if (confirm(`Discard ${s.failed} item${s.failed === 1 ? '' : 's'} that can't sync? This is safe when they are duplicates already saved on the server.`)) discardFailed()
+            }}
+          >Discard failed</button>
+        </>
+      )}
+      {s.failed > 0 && s.failedReason && (
+        <div className="muted small" style={{ flexBasis: '100%' }}>Why it failed: {s.failedReason}</div>
       )}
     </div>
   )

@@ -126,6 +126,7 @@ export default function TreeRegister() {
       {showAdd && (
         <AddTreeModal
           zones={zones}
+          trees={trees}
           defaultZone={zoneFilter}
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); load() }}
@@ -138,7 +139,7 @@ export default function TreeRegister() {
 // ---------------------------------------------------------------------------
 // Add tree with DUPLICATE PREVENTION
 // ---------------------------------------------------------------------------
-function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
+function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({
@@ -216,6 +217,12 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     } catch (err) {
       // No signal? Queue the registration (and photo) to sync later.
       if (isOfflineError(err)) {
+        // The online duplicate check couldn't run — fall back to the locally
+        // cached tree list so we don't queue a duplicate that will only fail
+        // on sync. If they meant to add a photo, the dialog offers that.
+        const localDup = trees.find((t) => t.code === code && !t.archived && !t.deleted_at)
+        if (localDup) { setBusy(false); setDuplicate(localDup); return }
+
         const treeId = crypto.randomUUID()
         await enqueue({ table: 'trees', row: { id: treeId, ...treeRow } })
         if (photo) {
@@ -232,6 +239,32 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
     }
   }
 
+  // The tree already exists and the worker attached a new photo — add it to the
+  // existing tree's history instead of creating a duplicate. Works offline too.
+  const addPhotoToExisting = async (tree) => {
+    if (!photo) return
+    setBusy(true); setError(null)
+    try {
+      const path = await uploadPhoto(photo, `trees/${tree.id}/photos`)
+      const { error: insErr } = await supabase.from('tree_photos').insert({
+        tree_id: tree.id, photo_path: path, caption: 'Updated photo', uploaded_by: user.id,
+      })
+      if (insErr) throw insErr
+      setBusy(false); setDuplicate(null); onSaved()
+    } catch (err) {
+      if (isOfflineError(err)) {
+        await enqueue({
+          table: 'tree_photos',
+          row: { tree_id: tree.id, caption: 'Updated photo', uploaded_by: user.id },
+          photo: { file: photo, folder: `trees/${tree.id}/photos`, field: 'photo_path' },
+        })
+        setBusy(false); setDuplicate(null); setQueued(true)
+      } else {
+        setBusy(false); setError(err.message)
+      }
+    }
+  }
+
   // The duplicate dialog (matches the required logic exactly).
   if (duplicate) {
     return (
@@ -239,16 +272,24 @@ function AddTreeModal({ zones, defaultZone, onClose, onSaved }) {
         <Banner kind="info">
           This tree already exists: <strong>{duplicate.code}</strong>.<br />
           Current status: <strong>{duplicate.status}</strong>.<br />
-          Do you want to update this tree record instead?
+          {photo
+            ? 'Add the photo you just took to this tree, or open the record.'
+            : 'Do you want to update this tree record instead?'}
         </Banner>
         <div className="modal-actions" style={{ flexWrap: 'wrap' }}>
           <Button variant="ghost" onClick={() => setDuplicate(null)}>Cancel</Button>
           <Button variant="secondary" onClick={() => navigate(`/trees/${duplicate.id}?tab=history`)}>
             View history
           </Button>
-          <Button onClick={() => navigate(`/trees/${duplicate.id}?edit=1`)}>
-            Update existing record
-          </Button>
+          {photo ? (
+            <Button onClick={() => addPhotoToExisting(duplicate)} disabled={busy}>
+              {busy ? 'Adding…' : '📷 Add this photo to the tree'}
+            </Button>
+          ) : (
+            <Button onClick={() => navigate(`/trees/${duplicate.id}?edit=1`)}>
+              Update existing record
+            </Button>
+          )}
         </div>
       </Modal>
     )
