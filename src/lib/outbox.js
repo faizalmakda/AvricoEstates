@@ -53,6 +53,14 @@ export function isOfflineError(e) {
   return !navigator.onLine || /failed to fetch|networkerror|load failed|network request failed/i.test(e?.message || '')
 }
 
+// Rows queued for insert into `table` that haven't synced yet (excludes failed).
+// Lets the UI spot a duplicate made earlier in the same offline session, before
+// it has reached the server and shown up in the cached lists.
+export async function pendingInserts(table) {
+  const ops = await allOps()
+  return ops.filter((o) => !o.failed && o.op !== 'update' && o.table === table).map((o) => o.row)
+}
+
 // A "duplicate key" error means the record is ALREADY on the server (e.g. the
 // same tree was registered on another device, or queued twice). Re-inserting can
 // never succeed, so we treat it as done rather than retrying forever.
