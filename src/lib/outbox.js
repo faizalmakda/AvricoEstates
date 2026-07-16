@@ -33,18 +33,31 @@ async function delOp(id) { const db = await openDb(); return reqAsync(tx(db, 're
 async function allOps() { const db = await openDb(); return reqAsync(tx(db, 'readonly').getAll()) }
 
 // ---- observable state (for the UI sync indicator) -------------------------
-let state = { pending: 0, syncing: false, failed: 0 }
+let state = { pending: 0, syncing: false, failed: 0, failedReason: null }
 const listeners = new Set()
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn) }
 export function getStatus() { return state }
 async function refresh() {
   const ops = await allOps()
-  state = { ...state, pending: ops.filter((o) => !o.failed).length, failed: ops.filter((o) => o.failed).length }
+  const failedOps = ops.filter((o) => o.failed)
+  state = {
+    ...state,
+    pending: ops.filter((o) => !o.failed).length,
+    failed: failedOps.length,
+    failedReason: failedOps[0]?.lastError || null,
+  }
   listeners.forEach((l) => l(state))
 }
 
 export function isOfflineError(e) {
   return !navigator.onLine || /failed to fetch|networkerror|load failed|network request failed/i.test(e?.message || '')
+}
+
+// A "duplicate key" error means the record is ALREADY on the server (e.g. the
+// same tree was registered on another device, or queued twice). Re-inserting can
+// never succeed, so we treat it as done rather than retrying forever.
+export function isDuplicateError(e) {
+  return e?.code === '23505' || /duplicate key|already exists|unique constraint/i.test(e?.message || '')
 }
 
 // Store an op to replay later. `op` is 'insert' (default) or 'update'.
@@ -103,7 +116,12 @@ export async function processOutbox() {
         await delOp(op.id)
       } catch (e) {
         if (isOfflineError(e)) break // lost signal again — keep the rest for later
+        if (op.op !== 'update' && isDuplicateError(e)) {
+          await delOp(op.id) // already on the server — nothing to sync, clear it
+          continue
+        }
         op.attempts = (op.attempts || 0) + 1
+        op.lastError = e?.code ? `${e.code}: ${e.message}` : (e?.message || 'Unknown error')
         if (op.attempts >= 5) op.failed = true // give up after repeated hard failures
         await putOp(op)
       }
@@ -120,6 +138,14 @@ export async function retryFailed() {
   for (const o of ops) { if (o.failed) { o.failed = false; o.attempts = 0; await putOp(o) } }
   await refresh()
   processOutbox()
+}
+
+// Permanently drop the items that couldn't sync. Safe when they are duplicates
+// already saved on the server; use when the failures can't be resolved.
+export async function discardFailed() {
+  const ops = await allOps()
+  for (const o of ops) { if (o.failed) await delOp(o.id) }
+  await refresh()
 }
 
 if (typeof window !== 'undefined') {
