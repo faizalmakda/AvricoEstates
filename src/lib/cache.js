@@ -35,6 +35,33 @@ export async function cacheDelete(keys) {
   } catch { /* ignore */ }
 }
 
+// Like cachedSelect, but pages past Supabase's 1000-row-per-request limit to
+// return EVERY matching row. `makeRangeQuery(from, to)` must return a Supabase
+// select builder with a stable .order() (so paging is consistent) and .range().
+// Without this, tables over 1000 rows (e.g. trees) are silently truncated and
+// counts come out wrong. Returns { data, error, fromCache }.
+export async function cachedSelectAll(key, makeRangeQuery) {
+  const pageSize = 1000
+  const rows = []
+  try {
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await makeRangeQuery(from, from + pageSize - 1)
+      if (error) throw error
+      const batch = data ?? []
+      rows.push(...batch)
+      if (batch.length < pageSize) break
+    }
+  } catch (e) {
+    if (isOfflineError(e)) {
+      const cached = await get(key)
+      return { data: cached ?? null, error: null, fromCache: cached !== undefined }
+    }
+    return { data: null, error: e }
+  }
+  await put(key, rows)
+  return { data: rows, error: null }
+}
+
 // query is a Supabase builder (thenable). Returns { data, error, fromCache }.
 export async function cachedSelect(key, query) {
   let res

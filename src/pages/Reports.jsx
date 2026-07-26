@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { STATUS_COLORS } from '../lib/permissions'
+import { cachedSelectAll } from '../lib/cache'
 import { isOverdue } from './Tasks'
 import { Card, PageHeader, Spinner, Badge } from '../components/ui'
 
@@ -18,7 +19,8 @@ export default function Reports() {
     ;(async () => {
       const [zones, trees, tasks, yields, inv, mv, batches] = await Promise.all([
         supabase.from('zones').select('id,code').order('code'),
-        supabase.from('trees').select('status,zone_id,archived,deleted_at'),
+        cachedSelectAll('reports-trees', (from, to) =>
+          supabase.from('trees').select('status,zone_id,archived,deleted_at').order('id').range(from, to)),
         supabase.from('tasks').select('status,due_date'),
         supabase.from('yield_records').select('quantity,harvest_date,zone_id, zone:zone_id(code)'),
         supabase.from('inventory').select('id,name,quantity,min_stock,unit'),
