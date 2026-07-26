@@ -21,7 +21,7 @@ const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
 async function fetchNeighbor(t, dir) {
   if (!t || t.row_number == null || t.tree_number == null) return null
   const r = t.row_number, n = t.tree_number
-  let q = supabase.from('trees').select('id, row_number, tree_number')
+  let q = supabase.from('trees').select('id')
     .eq('zone_id', t.zone_id).eq('archived', false).is('deleted_at', null)
   q = dir === 'prev'
     ? q.or(`row_number.lt.${r},and(row_number.eq.${r},tree_number.lt.${n})`)
@@ -30,13 +30,6 @@ async function fetchNeighbor(t, dir) {
         .order('row_number', { ascending: true }).order('tree_number', { ascending: true })
   const { data } = await q.limit(1).maybeSingle()
   return data || null
-}
-
-// Button label: just the tree number when staying in the same row, or "R2 · T1"
-// when the step crosses into a different row.
-function neighborLabel(n, tree) {
-  if (!n) return null
-  return n.row_number === tree.row_number ? `Tree ${n.tree_number}` : `R${n.row_number} · T${n.tree_number}`
 }
 
 export default function TreeDetail() {
@@ -143,14 +136,14 @@ export default function TreeDetail() {
           disabled={!neighbors.prev}
           onClick={() => neighbors.prev && navigate(`/trees/${neighbors.prev.id}`)}
         >
-          ← {neighbors.prev ? neighborLabel(neighbors.prev, tree) : 'Previous'}
+          ← Previous
         </Button>
         <Button
           variant="ghost"
           disabled={!neighbors.next}
           onClick={() => neighbors.next && navigate(`/trees/${neighbors.next.id}`)}
         >
-          {neighbors.next ? neighborLabel(neighbors.next, tree) : 'Next'} →
+          Next →
         </Button>
       </div>
 
