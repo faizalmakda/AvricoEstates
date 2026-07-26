@@ -15,6 +15,20 @@ const treeCacheKeys = (id) => ['trees-full', 'trees-min',
 
 const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
 
+// Find the previous/next tree in the SAME zone & row, ordered by tree number,
+// so a reviewer can step from tree 001 → 002 → 003 without going back to the list.
+async function fetchNeighbor(t, dir) {
+  if (!t || t.row_number == null || t.tree_number == null) return null
+  let q = supabase.from('trees').select('id, tree_number')
+    .eq('zone_id', t.zone_id).eq('row_number', t.row_number)
+    .eq('archived', false).is('deleted_at', null)
+  q = dir === 'prev'
+    ? q.lt('tree_number', t.tree_number).order('tree_number', { ascending: false })
+    : q.gt('tree_number', t.tree_number).order('tree_number', { ascending: true })
+  const { data } = await q.limit(1).maybeSingle()
+  return data || null
+}
+
 export default function TreeDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -26,6 +40,10 @@ export default function TreeDetail() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState(params.get('tab') === 'history' ? 'History' : 'Overview')
   const [editing, setEditing] = useState(params.get('edit') === '1')
+  const [neighbors, setNeighbors] = useState({ prev: null, next: null })
+
+  // When moving to another tree, start at the top and clear the old neighbours.
+  useEffect(() => { window.scrollTo(0, 0); setNeighbors({ prev: null, next: null }) }, [id])
 
   const load = async () => {
     const [{ data: t }, insp, treat, ph, logs, repl, nameMap] = await Promise.all([
@@ -47,6 +65,12 @@ export default function TreeDetail() {
     })
     setNames(nameMap)
     setLoading(false)
+    // Load the row neighbours in the background (they're secondary to the tree).
+    if (t) {
+      Promise.all([fetchNeighbor(t, 'prev'), fetchNeighbor(t, 'next')])
+        .then(([prev, next]) => setNeighbors({ prev, next }))
+        .catch(() => {})
+    }
   }
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
@@ -102,6 +126,23 @@ export default function TreeDetail() {
   return (
     <div className="detail">
       <Link to="/trees" className="back-link">← Tree Register</Link>
+
+      <div className="tree-nav">
+        <Button
+          variant="ghost"
+          disabled={!neighbors.prev}
+          onClick={() => neighbors.prev && navigate(`/trees/${neighbors.prev.id}`)}
+        >
+          ← {neighbors.prev ? `Tree ${neighbors.prev.tree_number}` : 'Previous'}
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={!neighbors.next}
+          onClick={() => neighbors.next && navigate(`/trees/${neighbors.next.id}`)}
+        >
+          {neighbors.next ? `Tree ${neighbors.next.tree_number}` : 'Next'} →
+        </Button>
+      </div>
 
       <Card>
         <div className="card-head">

@@ -166,6 +166,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .seg { flex: 0 0 auto; white-space: nowrap; border: none; background: none; padding: 8px 16px; border-radius: 8px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
 .seg.active { background: var(--green-soft); color: var(--green); }
 
+/* ---------- Tree detail prev/next ---------- */
+.tree-nav { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.tree-nav button { flex: 1; }
+
 /* ---------- Tables ---------- */
 .table-card { padding: 0; overflow: hidden; }
 .table { width: 100%; border-collapse: collapse; }
