@@ -7,6 +7,7 @@ import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
 import { enqueue, isOfflineError, pendingInserts } from '../lib/outbox'
 import { cachedSelect, cachedSelectAll, cacheDelete } from '../lib/cache'
+import { useScrollRestoration } from '../lib/useScrollRestoration'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
 } from '../components/ui'
@@ -40,6 +41,9 @@ export default function TreeRegister() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Return to the same scroll spot when coming back from a tree's detail page.
+  useScrollRestoration(!loading)
 
   const setFilter = (key, val) => {
     const next = new URLSearchParams(params)
