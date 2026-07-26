@@ -174,12 +174,13 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onReload, onSav
   const [saved, setSaved] = useState(null) // code of the tree just registered
   const [duplicate, setDuplicate] = useState(null) // existing tree row if found
 
-  // Reset for the next tree in the row: keep zone/row/species, advance the tree
-  // number, clear the per-tree bits (status, notes, photo).
+  // Reset for the next tree. Keep only the zone; blank the row & tree number (and
+  // the other per-tree fields) so the user must enter the position consciously —
+  // this avoids accidentally registering into the wrong row after moving along.
   const addAnother = () => {
     setSaved(null); setQueued(false); setError(null); setPhoto(null)
     setPhotoKey((k) => k + 1)
-    setForm((f) => ({ ...f, tree: String((parseInt(f.tree, 10) || 0) + 1), status: 'Healthy', notes: '' }))
+    setForm((f) => ({ ...f, row: '', tree: '', species: '', planted_on: '', status: 'Healthy', notes: '' }))
   }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
