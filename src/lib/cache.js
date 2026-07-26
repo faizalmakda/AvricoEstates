@@ -26,6 +26,12 @@ async function get(key) {
   try { const db = await openDb(); return await reqAsync(db.transaction(STORE, 'readonly').objectStore(STORE).get(key)) } catch { return undefined }
 }
 
+// Read a cached value straight from the device (or undefined if none). Lets a
+// page show its last-known data instantly while it refreshes in the background.
+export async function getCached(key) {
+  return get(key)
+}
+
 // Drop cached entries so they re-fetch fresh next time (call after a mutation).
 export async function cacheDelete(keys) {
   try {
