@@ -143,6 +143,7 @@ export default function TreeRegister() {
           trees={trees}
           defaultZone={zoneFilter}
           onClose={() => setShowAdd(false)}
+          onReload={load}
           onSaved={() => { setShowAdd(false); load() }}
         />
       )}
@@ -153,7 +154,7 @@ export default function TreeRegister() {
 // ---------------------------------------------------------------------------
 // Add tree with DUPLICATE PREVENTION
 // ---------------------------------------------------------------------------
-function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
+function AddTreeModal({ zones, trees = [], defaultZone, onClose, onReload, onSaved }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({
@@ -166,10 +167,20 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
     notes: '',
   })
   const [photo, setPhoto] = useState(null)
+  const [photoKey, setPhotoKey] = useState(0) // bump to reset the file input
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [queued, setQueued] = useState(false)
+  const [saved, setSaved] = useState(null) // code of the tree just registered
   const [duplicate, setDuplicate] = useState(null) // existing tree row if found
+
+  // Reset for the next tree in the row: keep zone/row/species, advance the tree
+  // number, clear the per-tree bits (status, notes, photo).
+  const addAnother = () => {
+    setSaved(null); setQueued(false); setError(null); setPhoto(null)
+    setPhotoKey((k) => k + 1)
+    setForm((f) => ({ ...f, tree: String((parseInt(f.tree, 10) || 0) + 1), status: 'Healthy', notes: '' }))
+  }
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
   const zone = zones.find((z) => z.code === form.zoneCode)
@@ -239,7 +250,8 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
       }
       await cacheDelete(['trees-full', 'trees-min'])
       setBusy(false)
-      onSaved()
+      onReload?.()      // refresh the list & counts without closing the modal
+      setSaved(code)    // offer "Add another tree"
     } catch (err) {
       // No signal? Queue the registration (and photo) to sync later.
       // (Duplicates were already ruled out by the instant check above.)
@@ -316,6 +328,18 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
     )
   }
 
+  if (saved) {
+    return (
+      <Modal title="Tree registered" onClose={onClose}>
+        <Banner kind="info">✅ Registered <strong>{saved}</strong>.</Banner>
+        <div className="modal-actions">
+          <Button variant="ghost" onClick={onClose}>Done</Button>
+          <Button onClick={addAnother}>＋ Add another tree</Button>
+        </div>
+      </Modal>
+    )
+  }
+
   if (queued) {
     return (
       <Modal title="Saved offline" onClose={onClose}>
@@ -325,7 +349,10 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
         <p className="muted small">
           Note: the duplicate check runs when it syncs — if that position was taken while you were offline, it'll be flagged in the sync bar.
         </p>
-        <div className="modal-actions"><Button onClick={onClose}>Done</Button></div>
+        <div className="modal-actions">
+          <Button variant="ghost" onClick={onClose}>Done</Button>
+          <Button onClick={addAnother}>＋ Add another tree</Button>
+        </div>
       </Modal>
     )
   }
@@ -358,7 +385,7 @@ function AddTreeModal({ zones, trees = [], defaultZone, onClose, onSaved }) {
         <Field label="Planted on"><input type="date" value={form.planted_on} onChange={set('planted_on')} /></Field>
         <Field label="Notes"><textarea rows={2} value={form.notes} onChange={set('notes')} /></Field>
         <Field label="Photo (optional)" hint="Auto-compressed before saving">
-          <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+          <input key={photoKey} type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
         </Field>
 
         {error && <div className="banner banner-error">{error}</div>}
