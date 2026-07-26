@@ -12,16 +12,9 @@ export function useScrollRestoration(ready = true) {
   const navType = useNavigationType()
   const key = `scroll:${location.key}`
 
-  // Take scroll control away from the browser so its own restoration doesn't
-  // fight ours and snap the page back to the top.
-  useEffect(() => {
-    if (!('scrollRestoration' in window.history)) return
-    const prev = window.history.scrollRestoration
-    window.history.scrollRestoration = 'manual'
-    return () => { window.history.scrollRestoration = prev }
-  }, [])
-
   // Continuously remember where we are, and capture it on the way out too.
+  // (Scroll control is set to 'manual' globally in main.jsx so the browser's
+  // own restoration doesn't fight ours.)
   useEffect(() => {
     const save = () => { try { sessionStorage.setItem(key, String(window.scrollY)) } catch { /* ignore */ } }
     window.addEventListener('scroll', save, { passive: true })
