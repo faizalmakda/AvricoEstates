@@ -52,7 +52,7 @@ export default function TreeRegister() {
   useEffect(() => { load() }, [])
 
   // Return to the same scroll spot when coming back from a tree's detail page.
-  useScrollRestoration(!loading)
+  const saveScroll = useScrollRestoration(!loading)
 
   const setFilter = (key, val) => {
     const next = new URLSearchParams(params)
@@ -124,7 +124,7 @@ export default function TreeRegister() {
               {visible.map((t) => (
                 <tr key={t.id} className="clickable-row">
                   <td data-label="Tree ID">
-                    <Link to={`/trees/${t.id}`} className="mono-link">{t.code}</Link>
+                    <Link to={`/trees/${t.id}`} className="mono-link" onClick={saveScroll}>{t.code}</Link>
                   </td>
                   <td data-label="Species">{t.species || '—'}</td>
                   <td data-label="Status"><Badge color={STATUS_COLORS[t.status]}>{t.status}</Badge></td>
