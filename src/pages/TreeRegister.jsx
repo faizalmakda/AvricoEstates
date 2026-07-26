@@ -6,7 +6,7 @@ import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
 import { enqueue, isOfflineError, pendingInserts } from '../lib/outbox'
-import { cachedSelect, cachedSelectAll, cacheDelete } from '../lib/cache'
+import { cachedSelect, cachedSelectAll, cacheDelete, getCached } from '../lib/cache'
 import { useScrollRestoration } from '../lib/useScrollRestoration'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
@@ -24,8 +24,19 @@ export default function TreeRegister() {
   const statusFilter = params.get('status') || ''
   const q = params.get('q') || ''
 
+  const apply = (z, t) => {
+    setZones(z ?? [])
+    setTrees((t ?? []).filter((x) => !x.deleted_at))
+    setLoading(false)
+  }
+
   const load = async () => {
-    setLoading(true)
+    // Show the last-known copy instantly so returning to the list doesn't flash
+    // a spinner; then refresh from the server in the background.
+    const [cz, ct] = await Promise.all([getCached('zones-full'), getCached('trees-full')])
+    if (ct) apply(cz, ct)
+    else setLoading(true)
+
     const [{ data: z }, { data: t }] = await Promise.all([
       cachedSelect('zones-full', supabase.from('zones').select('*').order('code')),
       cachedSelectAll('trees-full', (from, to) => supabase
@@ -35,9 +46,7 @@ export default function TreeRegister() {
         .order('code')
         .range(from, to)),
     ])
-    setZones(z ?? [])
-    setTrees((t ?? []).filter((x) => !x.deleted_at))
-    setLoading(false)
+    apply(z, t)
   }
 
   useEffect(() => { load() }, [])
