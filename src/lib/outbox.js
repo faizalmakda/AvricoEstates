@@ -93,7 +93,15 @@ export async function queueIfOffline(error, spec) {
 
 async function executeOp(op) {
   let photoPath = null
-  if (op.photo?.file) photoPath = await uploadPhoto(op.photo.file, op.photo.folder)
+  const hasUsablePhoto = op.photo?.file && op.photo.file.size > 0
+  if (hasUsablePhoto) photoPath = await uploadPhoto(op.photo.file, op.photo.folder)
+
+  // The photo's content was lost on the device (e.g. the browser cleared it),
+  // so it can't be uploaded ("No content provided"). A pure photo record has
+  // nothing left to save — treat it as done. Other records save without the photo.
+  if (op.photo?.file && !hasUsablePhoto && op.op !== 'update' && op.table === 'tree_photos') {
+    return
+  }
 
   if (op.op === 'update') {
     const patch = { ...op.patch }
