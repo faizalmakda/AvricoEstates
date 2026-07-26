@@ -6,7 +6,7 @@ import { can, TREE_STATUSES, STATUS_COLORS } from '../lib/permissions'
 import { buildTreeCode, isValidPositions } from '../lib/treeCode'
 import { uploadPhoto } from '../lib/upload'
 import { enqueue, isOfflineError, pendingInserts } from '../lib/outbox'
-import { cachedSelect, cacheDelete } from '../lib/cache'
+import { cachedSelect, cachedSelectAll, cacheDelete } from '../lib/cache'
 import {
   Button, Card, PageHeader, Spinner, Badge, Modal, Field, EmptyState, Banner,
 } from '../components/ui'
@@ -27,11 +27,12 @@ export default function TreeRegister() {
     setLoading(true)
     const [{ data: z }, { data: t }] = await Promise.all([
       cachedSelect('zones-full', supabase.from('zones').select('*').order('code')),
-      cachedSelect('trees-full', supabase
+      cachedSelectAll('trees-full', (from, to) => supabase
         .from('trees')
         .select('*, zone:zone_id(code)')
         .eq('archived', false)
-        .order('code')),
+        .order('code')
+        .range(from, to)),
     ])
     setZones(z ?? [])
     setTrees((t ?? []).filter((x) => !x.deleted_at))

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { isOwner } from '../lib/permissions'
 import { STATUS_COLORS } from '../lib/permissions'
 import { fetchNameMap, nameOf } from '../lib/people'
+import { cachedSelectAll } from '../lib/cache'
 import { isOverdue } from './Tasks'
 import { Card, PageHeader, Spinner, Badge, Banner } from '../components/ui'
 
@@ -25,7 +26,8 @@ export default function Dashboard() {
     ;(async () => {
       const [zones, trees, tasks, inv, mv, batches, yields, insp, reqs, names] = await Promise.all([
         supabase.from('zones').select('id,code').order('code'),
-        supabase.from('trees').select('id,status,zone_id,archived,deleted_at'),
+        cachedSelectAll('dash-trees', (from, to) =>
+          supabase.from('trees').select('id,status,zone_id,archived,deleted_at').order('id').range(from, to)),
         supabase.from('tasks').select('id,title,status,due_date,assigned_to'),
         supabase.from('inventory').select('id,name,quantity,min_stock,unit'),
         supabase.from('stock_movements').select('item_id,movement_type,quantity'),
