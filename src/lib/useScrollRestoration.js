@@ -1,41 +1,39 @@
 import { useEffect, useRef } from 'react'
-import { useLocation, useNavigationType } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 
-// Remembers the window scroll position for each history entry and restores it
-// when the user navigates BACK (a POP). This keeps a long list — e.g. the tree
-// register — from jumping to the top after you open a tree and return.
+// Remembers the window scroll position for a given URL and restores it when you
+// come back to that URL (e.g. after opening a tree from the register). Keyed by
+// the URL itself — not the router's internal history key — so it works whether
+// you return via the browser/swipe back or an in-app back link.
 //
-// Pass `ready = true` only once the list has actually rendered, so we scroll
-// against the full-height page rather than an empty, still-loading one.
+// Pass `ready = true` only once the list has rendered, so we scroll against the
+// full-height page rather than an empty, still-loading one. (Scroll control is
+// set to 'manual' globally in main.jsx so the browser doesn't fight us.)
 export function useScrollRestoration(ready = true) {
   const location = useLocation()
-  const navType = useNavigationType()
-  const key = `scroll:${location.key}`
+  const key = `scroll:${location.pathname}${location.search}`
 
-  // Continuously remember where we are, and capture it on the way out too.
-  // (Scroll control is set to 'manual' globally in main.jsx so the browser's
-  // own restoration doesn't fight ours.)
+  // Remember where we are as we scroll, and capture it on the way out too.
   useEffect(() => {
     const save = () => { try { sessionStorage.setItem(key, String(window.scrollY)) } catch { /* ignore */ } }
     window.addEventListener('scroll', save, { passive: true })
     return () => { save(); window.removeEventListener('scroll', save) }
   }, [key])
 
-  // Once the content is ready: on a back-navigation jump to the saved spot,
-  // on a fresh visit start at the top. Keep re-applying for a few frames until
-  // the position sticks — the list can still be growing to full height.
-  const restored = useRef(false)
+  // Once the content is ready, jump back to the saved spot. Keep re-applying for
+  // a few frames until it sticks — the list can still be growing to full height.
+  const done = useRef(false)
   useEffect(() => {
-    if (restored.current || !ready) return
-    restored.current = true
-    const target = navType === 'POP' ? Number(sessionStorage.getItem(key) || 0) : 0
+    if (done.current || !ready) return
+    done.current = true
+    const target = Number(sessionStorage.getItem(key) || 0)
     if (target <= 0) return
     let tries = 0
     const tick = () => {
       window.scrollTo(0, target)
       tries += 1
-      if (Math.abs(window.scrollY - target) > 2 && tries < 30) requestAnimationFrame(tick)
+      if (Math.abs(window.scrollY - target) > 2 && tries < 40) requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
-  }, [ready, navType, key])
+  }, [ready, key])
 }
