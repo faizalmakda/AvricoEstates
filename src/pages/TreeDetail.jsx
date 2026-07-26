@@ -15,18 +15,28 @@ const treeCacheKeys = (id) => ['trees-full', 'trees-min',
 
 const TABS = ['Overview', 'Inspections', 'Treatments', 'Photos', 'History']
 
-// Find the previous/next tree in the SAME zone & row, ordered by tree number,
-// so a reviewer can step from tree 001 → 002 → 003 without going back to the list.
+// Find the previous/next tree within the SAME zone, ordered by row then tree
+// number — so a reviewer steps 001 → 002 → … → end of row → first of next row,
+// but never crosses into another zone.
 async function fetchNeighbor(t, dir) {
   if (!t || t.row_number == null || t.tree_number == null) return null
-  let q = supabase.from('trees').select('id, tree_number')
-    .eq('zone_id', t.zone_id).eq('row_number', t.row_number)
-    .eq('archived', false).is('deleted_at', null)
+  const r = t.row_number, n = t.tree_number
+  let q = supabase.from('trees').select('id, row_number, tree_number')
+    .eq('zone_id', t.zone_id).eq('archived', false).is('deleted_at', null)
   q = dir === 'prev'
-    ? q.lt('tree_number', t.tree_number).order('tree_number', { ascending: false })
-    : q.gt('tree_number', t.tree_number).order('tree_number', { ascending: true })
+    ? q.or(`row_number.lt.${r},and(row_number.eq.${r},tree_number.lt.${n})`)
+        .order('row_number', { ascending: false }).order('tree_number', { ascending: false })
+    : q.or(`row_number.gt.${r},and(row_number.eq.${r},tree_number.gt.${n})`)
+        .order('row_number', { ascending: true }).order('tree_number', { ascending: true })
   const { data } = await q.limit(1).maybeSingle()
   return data || null
+}
+
+// Button label: just the tree number when staying in the same row, or "R2 · T1"
+// when the step crosses into a different row.
+function neighborLabel(n, tree) {
+  if (!n) return null
+  return n.row_number === tree.row_number ? `Tree ${n.tree_number}` : `R${n.row_number} · T${n.tree_number}`
 }
 
 export default function TreeDetail() {
@@ -133,14 +143,14 @@ export default function TreeDetail() {
           disabled={!neighbors.prev}
           onClick={() => neighbors.prev && navigate(`/trees/${neighbors.prev.id}`)}
         >
-          ← {neighbors.prev ? `Tree ${neighbors.prev.tree_number}` : 'Previous'}
+          ← {neighbors.prev ? neighborLabel(neighbors.prev, tree) : 'Previous'}
         </Button>
         <Button
           variant="ghost"
           disabled={!neighbors.next}
           onClick={() => neighbors.next && navigate(`/trees/${neighbors.next.id}`)}
         >
-          {neighbors.next ? `Tree ${neighbors.next.tree_number}` : 'Next'} →
+          {neighbors.next ? neighborLabel(neighbors.next, tree) : 'Next'} →
         </Button>
       </div>
 
