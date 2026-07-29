@@ -154,16 +154,17 @@ export async function processOutbox() {
         // Errors that can never succeed on retry — clear them so they don't stick.
         if (op.op !== 'update' && (isDuplicateError(e) || isForeignKeyError(e))) {
           await delOp(op.id)
-          continue
+        } else {
+          op.attempts = (op.attempts || 0) + 1
+          op.lastError = e?.code ? `${e.code}: ${e.message}` : (e?.message || 'Unknown error')
+          if (op.attempts >= 5) op.failed = true // give up after repeated hard failures
+          await putOp(op)
+          // One bad/slow item shouldn't block the rest — move on. Only back off if
+          // several requests in a row are failing (the connection is likely down).
+          if (isOfflineError(e) && ++stalls >= 3) { await refresh(); break }
         }
-        op.attempts = (op.attempts || 0) + 1
-        op.lastError = e?.code ? `${e.code}: ${e.message}` : (e?.message || 'Unknown error')
-        if (op.attempts >= 5) op.failed = true // give up after repeated hard failures
-        await putOp(op)
-        // One bad/slow item shouldn't block the rest — move on. Only back off if
-        // several requests in a row are failing (the connection is likely down).
-        if (isOfflineError(e) && ++stalls >= 3) break
       }
+      await refresh() // update the count after each item so progress is visible live
     }
   } finally {
     running = false
