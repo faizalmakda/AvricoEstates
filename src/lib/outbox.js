@@ -68,6 +68,23 @@ export function isDuplicateError(e) {
   return e?.code === '23505' || /duplicate key|already exists|unique constraint/i.test(e?.message || '')
 }
 
+// A foreign-key violation means the parent row (e.g. the tree a photo belongs to)
+// doesn't exist — usually because its insert was dropped as a duplicate. It can
+// never succeed, so it should be cleared rather than retried forever.
+export function isForeignKeyError(e) {
+  return e?.code === '23503' || /foreign key/i.test(e?.message || '')
+}
+
+// Guard against a single request hanging forever (a stalled upload on a weak
+// connection), which would otherwise freeze the whole sync queue.
+function withTimeout(promise, ms) {
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Timed out while syncing')), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
 // Store an op to replay later. `op` is 'insert' (default) or 'update'.
 // `photo` is { file, folder, field } using the RAW camera file — we compress it
 // here so only a small blob is kept on the device.
@@ -126,20 +143,26 @@ export async function processOutbox() {
   state = { ...state, syncing: true }; listeners.forEach((l) => l(state))
   try {
     const ops = (await allOps()).filter((o) => !o.failed).sort((a, b) => a.createdAt - b.createdAt)
+    let stalls = 0 // consecutive connection stalls
     for (const op of ops) {
       try {
-        await executeOp(op)
+        await withTimeout(executeOp(op), 30000)
         await delOp(op.id)
+        stalls = 0
       } catch (e) {
-        if (isOfflineError(e)) break // lost signal again — keep the rest for later
-        if (op.op !== 'update' && isDuplicateError(e)) {
-          await delOp(op.id) // already on the server — nothing to sync, clear it
+        if (!navigator.onLine) break // genuinely offline — keep the rest for later
+        // Errors that can never succeed on retry — clear them so they don't stick.
+        if (op.op !== 'update' && (isDuplicateError(e) || isForeignKeyError(e))) {
+          await delOp(op.id)
           continue
         }
         op.attempts = (op.attempts || 0) + 1
         op.lastError = e?.code ? `${e.code}: ${e.message}` : (e?.message || 'Unknown error')
         if (op.attempts >= 5) op.failed = true // give up after repeated hard failures
         await putOp(op)
+        // One bad/slow item shouldn't block the rest — move on. Only back off if
+        // several requests in a row are failing (the connection is likely down).
+        if (isOfflineError(e) && ++stalls >= 3) break
       }
     }
   } finally {
