@@ -63,3 +63,31 @@ async function upload(path) {
 await upload(`auto/avrico-backup-${date}.json`)
 await upload('auto/latest.json')
 console.log('Row counts:', backup.row_counts)
+
+// Keep only the most recent daily snapshots so backups don't pile up forever
+// (they share the storage limit with photos). `latest.json` is always kept.
+async function pruneOldBackups(keep = 14) {
+  const res = await fetch(`${URL}/storage/v1/object/list/backups`, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prefix: 'auto/', limit: 1000 }),
+  })
+  if (!res.ok) { console.warn(`Prune skipped: list HTTP ${res.status}`); return }
+  const items = await res.json()
+  const dated = items
+    .map((o) => o.name)
+    .filter((n) => /^avrico-backup-\d{4}-\d{2}-\d{2}\.json$/.test(n))
+    .sort()          // filenames sort chronologically (oldest → newest)
+  const toDelete = dated.slice(0, Math.max(0, dated.length - keep)).map((n) => `auto/${n}`)
+  if (toDelete.length === 0) { console.log(`Backups: ${dated.length} kept, none to prune.`); return }
+  const del = await fetch(`${URL}/storage/v1/object/backups`, {
+    method: 'DELETE',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prefixes: toDelete }),
+  })
+  if (!del.ok) { console.warn(`Prune delete failed: HTTP ${del.status} — ${await del.text()}`); return }
+  console.log(`Pruned ${toDelete.length} old backup(s); kept the newest ${keep}.`)
+}
+
+await pruneOldBackups(14)
+
