@@ -166,6 +166,31 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .seg { flex: 0 0 auto; white-space: nowrap; border: none; background: none; padding: 8px 16px; border-radius: 8px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; }
 .seg.active { background: var(--green-soft); color: var(--green); }
 
+/* ---------- AI Insights ---------- */
+.gen-card { margin-bottom: 16px; }
+.gen-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.eyebrow { font-size: .72rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.insight-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.istat { background: var(--green-soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.istat .n { font-size: 1.5rem; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.istat .l { font-size: .74rem; color: var(--muted); margin-top: 3px; }
+.rec-list { display: flex; flex-direction: column; gap: 12px; }
+.rec { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+.rec-stripe { width: 5px; flex: none; }
+.rec-crit .rec-stripe { background: #b5392b; }
+.rec-warn .rec-stripe { background: #ef6c00; }
+.rec-info .rec-stripe { background: var(--green-2); }
+.rec-body { padding: 14px 15px; flex: 1; min-width: 0; }
+.rec-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+.rec-head h3 { margin: 0; font-size: 1rem; }
+.rec-tag { font-size: .66rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.rec-tag-crit { background: #f7e4e1; color: #b5392b; }
+.rec-tag-warn { background: #fdeede; color: #c05a0c; }
+.rec-tag-info { background: var(--green-soft); color: var(--green-2); }
+.rec p { margin: 6px 0 0; font-size: .9rem; }
+.rec-action strong { color: var(--green-2); }
+@media (max-width: 520px) { .insight-stats { grid-template-columns: repeat(2, 1fr); } }
+
 /* ---------- Tree detail prev/next ---------- */
 .tree-nav { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .tree-nav button { flex: 1; }

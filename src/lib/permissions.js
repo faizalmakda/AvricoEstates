@@ -69,6 +69,7 @@ export const can = {
 
   // Admin
   manageUsers: isOwner,
+  viewInsights: isOwner,   // AI insights page (owner-only)
   viewReports: () => true, // everyone, including viewers
   viewEvidence: isStaff,
   viewAudit: isOwner,      // activity / audit log
