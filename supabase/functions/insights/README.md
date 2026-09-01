@@ -22,8 +22,8 @@ supabase functions deploy insights
 # store your Google AI key as a secret (paste your real key)
 supabase secrets set GEMINI_API_KEY=AIza...your_key...
 
-# optional: pick a model (default is gemini-2.0-flash)
-# supabase secrets set GEMINI_MODEL=gemini-2.0-flash
+# optional: pick a model (default is gemini-3.6-flash)
+# supabase secrets set GEMINI_MODEL=gemini-3.6-flash
 ```
 
 That's it. Open the app as an **owner** → **Insights** → **Generate insights**.
