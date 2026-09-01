@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     const url = Deno.env.get('SUPABASE_URL')!
     const anon = Deno.env.get('SUPABASE_ANON_KEY')!
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-2.0-flash'
+    const model = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.6-flash'
 
     if (!geminiKey) {
       return json({ error: 'AI is not set up yet. Add the GEMINI_API_KEY secret in Supabase to enable insights.' }, 400)
