@@ -49,7 +49,7 @@ export default function FarmChat() {
       // Send the recent turns; drop the leading welcome so it starts with a user turn.
       const convo = history.map((m) => ({ role: m.role, text: m.text }))
       while (convo.length && convo[0].role === 'model') convo.shift()
-      const { data, error: fnErr } = await supabase.functions.invoke('insights', {
+      const { data, error: fnErr } = await supabase.functions.invoke('chat', {
         body: { messages: convo.slice(-20), summary: summaryRef.current },
       })
       if (fnErr) {
