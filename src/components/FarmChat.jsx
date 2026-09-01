@@ -9,6 +9,7 @@ import { Card, Button } from './ui'
 // on the server, so it adds no storage. It won't follow you to another device.
 const CHAT_KEY = 'avrico:chat'
 const firstName = (p) => (p?.full_name || '').trim().split(/\s+/)[0] || ''
+const greeting = (name) => `Hello${name ? ' ' + name : ''}, how can I help you today?`
 
 const loadChat = () => {
   try { const v = JSON.parse(localStorage.getItem(CHAT_KEY) || 'null'); return Array.isArray(v) && v.length ? v : null }
@@ -19,6 +20,7 @@ const saveChat = (m) => { try { localStorage.setItem(CHAT_KEY, JSON.stringify(m.
 export default function FarmChat() {
   const { profile } = useAuth()
   const name = firstName(profile)
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState(() => loadChat() ?? [])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -29,12 +31,21 @@ export default function FarmChat() {
   // Set/refresh the welcome until a real conversation starts (so the name shows
   // once the profile has loaded).
   useEffect(() => {
-    setMessages((cur) => (cur.length > 1 ? cur
-      : [{ role: 'model', text: `Hello${name ? ' ' + name : ''}, how can I help you today?` }]))
+    setMessages((cur) => (cur.length > 1 ? cur : [{ role: 'model', text: greeting(name) }]))
   }, [name])
 
   useEffect(() => { if (messages.length) saveChat(messages) }, [messages])
-  useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight) }, [messages, busy])
+  useEffect(() => { if (open) logRef.current?.scrollTo(0, logRef.current.scrollHeight) }, [messages, busy, open])
+
+  // While open: Escape closes, and lock the page behind it from scrolling.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [open])
 
   const send = async (e) => {
     e?.preventDefault()
@@ -46,9 +57,8 @@ export default function FarmChat() {
     setBusy(true)
     try {
       if (!summaryRef.current) summaryRef.current = await buildSummary()
-      // Send the recent turns; drop the leading welcome so it starts with a user turn.
       const convo = history.map((m) => ({ role: m.role, text: m.text }))
-      while (convo.length && convo[0].role === 'model') convo.shift()
+      while (convo.length && convo[0].role === 'model') convo.shift() // must start with a user turn
       const { data, error: fnErr } = await supabase.functions.invoke('chat', {
         body: { messages: convo.slice(-20), summary: summaryRef.current },
       })
@@ -66,43 +76,60 @@ export default function FarmChat() {
   }
 
   const clear = () => {
-    const w = [{ role: 'model', text: `Hello${name ? ' ' + name : ''}, how can I help you today?` }]
+    const w = [{ role: 'model', text: greeting(name) }]
     setMessages(w); saveChat(w); setError(null)
   }
 
+  const hasChat = messages.some((m) => m.role === 'user')
+
   return (
-    <Card>
-      <div className="chat-head">
-        <h2>Ask AI</h2>
-        {messages.length > 1 && <button className="link" onClick={clear}>Clear chat</button>}
-      </div>
-      <p className="muted small" style={{ marginTop: 0 }}>
-        Ask about your trees, zones, tasks or stock — or for farming advice. This chat is kept on this device only.
-      </p>
+    <>
+      <Card>
+        <div className="chat-head"><h2>Ask AI</h2></div>
+        <p className="muted small" style={{ marginTop: 0 }}>
+          Chat with an assistant about your trees, zones, tasks or stock — or for farming advice. Kept on this device only.
+        </p>
+        <Button className="btn-block" onClick={() => setOpen(true)}>✨ Open Ask AI</Button>
+      </Card>
 
-      <div className="chat-log" ref={logRef}>
-        {messages.map((m, i) => (
-          <div key={i} className={`chat-msg chat-${m.role}`}>{m.text}</div>
-        ))}
-        {busy && (
-          <div className="chat-msg chat-model chat-typing" aria-label="Assistant is typing">
-            <span></span><span></span><span></span>
+      {open && (
+        <div className="chat-overlay" role="dialog" aria-modal="true" aria-label="Ask AI">
+          <div className="chat-bar">
+            <div>
+              <strong>Ask AI</strong>
+              <div className="small">About your trees, zones, tasks &amp; stock</div>
+            </div>
+            <div className="chat-bar-actions">
+              {hasChat && <button className="link" onClick={clear}>Clear</button>}
+              <button className="chat-x" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+            </div>
           </div>
-        )}
-      </div>
 
-      {error && <div className="banner banner-error" style={{ marginTop: 10 }}>{error}</div>}
+          <div className="chat-log" ref={logRef}>
+            {messages.map((m, i) => (
+              <div key={i} className={`chat-msg chat-${m.role}`}>{m.text}</div>
+            ))}
+            {busy && (
+              <div className="chat-msg chat-model chat-typing" aria-label="Assistant is typing">
+                <span></span><span></span><span></span>
+              </div>
+            )}
+          </div>
 
-      <form className="chat-input" onSubmit={send}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about your farm…"
-          disabled={busy}
-          aria-label="Message"
-        />
-        <Button type="submit" disabled={busy || !input.trim()}>Send</Button>
-      </form>
-    </Card>
+          {error && <div className="banner banner-error chat-error">{error}</div>}
+
+          <form className="chat-input" onSubmit={send}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your farm…"
+              disabled={busy}
+              aria-label="Message"
+            />
+            <Button type="submit" disabled={busy || !input.trim()}>Send</Button>
+          </form>
+        </div>
+      )}
+    </>
   )
 }

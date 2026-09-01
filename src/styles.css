@@ -211,6 +211,36 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--green-soft)
 .chat-input input { flex: 1; }
 @media (prefers-reduced-motion: reduce) { .chat-typing span { animation: none; } }
 
+/* Full-screen chat popup */
+.chat-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+.chat-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--green); color: #fff;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+}
+.chat-bar strong { font-size: 1.05rem; display: block; }
+.chat-bar .small { color: rgba(255, 255, 255, .75); }
+.chat-bar-actions { display: flex; align-items: center; gap: 14px; }
+.chat-bar .link { color: #fff; }
+.chat-x {
+  background: rgba(255, 255, 255, .16); border: none; color: #fff;
+  width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; cursor: pointer;
+  display: grid; place-items: center; flex: none;
+}
+.chat-overlay .chat-log {
+  flex: 1; max-height: none; width: 100%; max-width: 720px; margin: 0 auto; padding: 14px 16px;
+}
+.chat-overlay .chat-error { width: 100%; max-width: 720px; margin: 0 auto; }
+.chat-overlay .chat-input {
+  width: 100%; max-width: 720px; margin: 0 auto;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+
 /* ---------- Tree detail prev/next ---------- */
 .tree-nav { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 .tree-nav button { flex: 1; }
