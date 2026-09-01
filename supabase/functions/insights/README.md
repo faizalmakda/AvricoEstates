@@ -1,7 +1,12 @@
-# Farm Insights — setup (one-time)
+# AI Insights & Ask-AI chat — setup
 
-The **Insights** page (owner-only) asks Google Gemini for recommendations based
-on your farm data. The AI key lives here on the server, never in the app.
+The owner-only **AI Insights** page (recommendations) and its **Ask AI** chat are
+both powered by this one function, using Google Gemini. The AI key lives here on
+the server, never in the app.
+
+> **Updating?** If you already deployed an earlier version, **re-deploy this
+> function** (re-paste `index.ts` in the dashboard editor and Deploy) so the chat
+> assistant works — older versions only handled the insights button.
 
 This uses **Google Gemini's free tier** — no credit card, no cost within its
 limits.
