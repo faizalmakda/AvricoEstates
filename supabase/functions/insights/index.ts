@@ -1,9 +1,8 @@
 // Supabase Edge Function: insights
 // ----------------------------------------------------------------------------
-// Owner-only AI helper backed by Google Gemini (free tier). Handles two things,
-// chosen by the request body:
-//   • { summary }            -> prioritised farm recommendations (Insights page)
-//   • { messages, summary }  -> a chat reply (Ask AI assistant)
+// Owner-only. Takes a compact JSON summary of the farm's data, asks Google
+// Gemini (free tier) for prioritised recommendations, and returns them as JSON.
+// (The "Ask AI" chat lives in a separate `chat` function.)
 // The Gemini API key stays here on the server — never in the public frontend.
 //
 // Security (same shape as create-user):
@@ -61,18 +60,6 @@ function insightsPrompt(summary: unknown) {
   ].join('\n')
 }
 
-function chatSystem(summary: unknown) {
-  return [
-    'You are the friendly AI assistant for Avrico Estates, an avocado farm in Malawi. You help the owner.',
-    'Use the farm data snapshot below to answer questions about trees, zones, statuses, tasks and stock with real numbers.',
-    'If a question is not covered by the data, answer from general avocado/farming knowledge and say when you are giving general advice.',
-    'Keep answers concise, practical and plain. For big decisions, remind them to confirm on the ground.',
-    '',
-    'FARM DATA SNAPSHOT:',
-    JSON.stringify(summary),
-  ].join('\n')
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -100,24 +87,6 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-
-    // 3a) Chat mode.
-    if (Array.isArray(body?.messages)) {
-      const contents = body.messages
-        .filter((m: { role?: string; text?: string }) => (m?.role === 'user' || m?.role === 'model') && typeof m?.text === 'string')
-        .map((m: { role: string; text: string }) => ({ role: m.role, parts: [{ text: m.text }] }))
-      if (contents.length === 0) return json({ error: 'No message provided.' }, 400)
-
-      const res = await callGemini(model, geminiKey, {
-        systemInstruction: { parts: [{ text: chatSystem(body.summary ?? {}) }] },
-        contents,
-        generationConfig: { temperature: 0.5 },
-      })
-      if (res.errorResponse) return res.errorResponse
-      return json({ reply: (res.text || '').trim() || "Sorry, I couldn't come up with an answer just now." })
-    }
-
-    // 3b) Insights mode.
     const summary = body?.summary
     if (!summary) return json({ error: 'No farm summary was provided.' }, 400)
 

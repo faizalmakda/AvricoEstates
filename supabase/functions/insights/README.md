@@ -1,42 +1,33 @@
-# AI Insights & Ask-AI chat — setup
+# AI features — setup
 
-The owner-only **AI Insights** page (recommendations) and its **Ask AI** chat are
-both powered by this one function, using Google Gemini. The AI key lives here on
-the server, never in the app.
+The owner-only **AI Insights** (recommendations) and **Ask AI** (chat) features
+are powered by Google Gemini. There are **two small Edge Functions**:
 
-> **Updating?** If you already deployed an earlier version, **re-deploy this
-> function** (re-paste `index.ts` in the dashboard editor and Deploy) so the chat
-> assistant works — older versions only handled the insights button.
+| Function   | Powers            | Request                 |
+|------------|-------------------|-------------------------|
+| `insights` | the Insights page | `{ summary }`           |
+| `chat`     | the Ask AI chat   | `{ messages, summary }` |
 
-This uses **Google Gemini's free tier** — no credit card, no cost within its
-limits.
+Both share the **same project secrets**, so the key is only set once:
 
-## 1. Get a free Google AI key (~2 minutes)
-1. Go to **https://aistudio.google.com/apikey**
-2. Sign in with a Google account.
-3. Click **Create API key** → copy the key (starts with `AIza...`).
+- `GEMINI_API_KEY` (required) — a free key from **https://aistudio.google.com/apikey**
+- `GEMINI_MODEL` (optional) — defaults to `gemini-3.6-flash`
 
-## 2. Deploy the function and add the key
-With the [Supabase CLI](https://supabase.com/docs/guides/cli) installed and
-logged in (`supabase login`, then `supabase link` to this project):
+## Deploying a function (phone-friendly)
+Creating a function starts you in a near-empty editor, so there's nothing to
+select-all-and-delete — you just paste:
 
-```bash
-# deploy the function
-supabase functions deploy insights
+1. Supabase dashboard → **Edge Functions** → **Deploy a new function** (or **Create function**).
+2. Name it exactly `insights` (or `chat`).
+3. Paste the whole contents of that function's `index.ts`. Easiest to copy from the **raw** view, e.g.
+   `https://raw.githubusercontent.com/faizalmakda/AvricoEstates/<branch>/supabase/functions/chat/index.ts`
+4. **Deploy.**
 
-# store your Google AI key as a secret (paste your real key)
-supabase secrets set GEMINI_API_KEY=AIza...your_key...
-
-# optional: pick a model (default is gemini-3.6-flash)
-# supabase secrets set GEMINI_MODEL=gemini-3.6-flash
-```
-
-That's it. Open the app as an **owner** → **Insights** → **Generate insights**.
+The secret is shared, so a newly-created `chat` function works immediately with
+the key you already set for `insights` — no need to add it again.
 
 ## Notes
-- Only active **owners** can call it (checked server-side).
-- Free-tier limits apply (a cap on requests per minute/day) — fine for pressing
-  "Generate" now and then; not for bursts.
-- On Google's free tier, inputs may be used to improve their models. To avoid
-  that, switch to a paid key later — no code change, just replace the secret.
-- To use Anthropic Claude or another provider instead, only `index.ts` changes.
+- Only active **owners** can call either function (checked server-side).
+- Free-tier rate limits apply; the app shows a friendly "try again later" message.
+- On Google's free tier, inputs may be used to improve their models. Switch to a
+  paid key later to avoid that — no code change, just replace the secret.
