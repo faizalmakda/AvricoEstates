@@ -103,8 +103,20 @@ Deno.serve(async (req) => {
     )
 
     if (!geminiRes.ok) {
-      const detail = (await geminiRes.text()).slice(0, 400)
-      return json({ error: `The AI service returned an error (${geminiRes.status}). ${detail}` }, 502)
+      const raw = await geminiRes.text()
+      // Free-tier limit hit — pass back how long to wait, if Google told us.
+      if (geminiRes.status === 429) {
+        let retry: number | null = null
+        try {
+          const j = JSON.parse(raw)
+          for (const d of j?.error?.details ?? []) {
+            const m = typeof d?.retryDelay === 'string' ? d.retryDelay.match(/(\d+)s/) : null
+            if (m) retry = Number(m[1])
+          }
+        } catch { /* ignore */ }
+        return json({ rate_limited: true, retry_after_seconds: retry, error: 'Free AI usage limit reached.' }, 429)
+      }
+      return json({ error: `The AI service returned an error (${geminiRes.status}). ${raw.slice(0, 400)}` }, 502)
     }
 
     const data = await geminiRes.json()
