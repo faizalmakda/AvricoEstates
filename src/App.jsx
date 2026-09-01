@@ -19,6 +19,7 @@ import Produce from './pages/Produce'
 import Reports from './pages/Reports'
 import Users from './pages/Users'
 import Activity from './pages/Activity'
+import Insights from './pages/Insights'
 import Game from './pages/Game'
 
 // Wrap a page so only signed-in users (optionally owners) can see it.
@@ -56,6 +57,7 @@ export default function App() {
       <Route path="/game" element={<Protected><Game /></Protected>} />
       <Route path="/reports" element={<Protected><Reports /></Protected>} />
       <Route path="/activity" element={<Protected ownerOnly><Activity /></Protected>} />
+      <Route path="/insights" element={<Protected ownerOnly><Insights /></Protected>} />
       <Route path="/users" element={<Protected ownerOnly><Users /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
